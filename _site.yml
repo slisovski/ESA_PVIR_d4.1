@@ -5,7 +5,7 @@ navbar:
   left:
     - text: "Methods"
       href: Methods.html
-    - text: "Results"
+    - text: "Results: MAGT"
       href: Results.html
 output:
   html_document:

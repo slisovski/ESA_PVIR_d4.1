@@ -5,3 +5,10 @@ date: "9/16/2021"
 output: html_document
 ---
 
+<style type="text/css">
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>

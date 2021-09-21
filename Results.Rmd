@@ -53,6 +53,53 @@ map <- ggplot() +
 load("data/temp/rast_df.rda")
 ```
 
+
 ```{r}
-map
+modDat <- inSitu_temp
+
+mod0  <- lm(MAGT_Permafrost_cci~Temp, data = modDat)
+modM  <- data.frame(Temp=seq(min(inSitu_temp$Temp), max(inSitu_temp$Temp), length = 50))
+modM  <- data.frame(modM, predict(mod0, newdata=modM, interval = "prediction"))
+
+p1 <- ggplot(NULL, aes(x, y)) +
+    geom_point(data = modDat, mapping = aes(Temp, MAGT_Permafrost_cci), alpha = 0.1, shape = 16, fill = "grey40") +
+    theme_bw() + 
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    xlim(-15, 10) + ylim(-15, 10) +
+    geom_ribbon(data = modM, mapping = aes(x = Temp, y = fit, ymin = lwr, ymax = upr), alpha = 0.15) +
+    geom_line(  data = modM, mapping = aes(x = Temp, y = fit), col = "cornflowerblue", size = 1.5) +
+    labs(y = "", x = "") +
+    theme(text = element_text(size=rel(4.5)))
+
+modDat <- inSitu_temp %>% mutate(cold = as.factor(if_else(coldSite, 1, 2)))
+mod1  <- lm(MAGT_Permafrost_cci~Temp + cold + Temp*cold, data = modDat)
+modM  <- expand.grid(Temp=seq(min(inSitu_temp$Temp), max(inSitu_temp$Temp), length = 50), cold = as.factor(c(1, 2)))
+modM <- data.frame(modM, predict(mod1, newdata=modM, interval = "prediction"))
+
+p2 <- ggplot(NULL, aes(x, y)) +
+    geom_point(data = modDat, mapping = aes(Temp, MAGT_Permafrost_cci, col = cold), alpha = 0.1, shape = 16) +
+    scale_color_manual(name = "in situ MAGT", labels=c("< 1˚C", ">= 1˚C"), values = c("1" = "navy", "2" = "magenta4")) +
+    theme_bw() + 
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    xlim(-15, 10) + ylim(-15, 10) +
+    geom_ribbon(data = modM %>% filter(cold==1 & Temp>min(modDat$Temp[modDat$cold==1]) & Temp<max(modDat$Temp[modDat$cold==1])), mapping = aes(x = Temp, y = fit, ymin = lwr, ymax = upr), alpha = 0.15) +
+    geom_line(  data = modM %>% filter(cold==1 & Temp>min(modDat$Temp[modDat$cold==1]) & Temp<max(modDat$Temp[modDat$cold==1])), mapping = aes(x = Temp, y = fit), 
+              col = "navy", size = 1.5) +
+    geom_ribbon(data = modM %>% filter(cold==2 & Temp>min(modDat$Temp[modDat$cold==2]) & Temp<max(modDat$Temp[modDat$cold==2])), mapping = aes(x = Temp, y = fit, ymin = lwr, ymax = upr), alpha = 0.15) +
+    geom_line(  data = modM %>% filter(cold==2 & Temp>min(modDat$Temp[modDat$cold==2]) & Temp<max(modDat$Temp[modDat$cold==2])), mapping = aes(x = Temp, y = fit), 
+              col = "magenta4", size = 1.5) +
+    labs(y = "", x = "") +
+    theme(text = element_text(size=rel(4.5)),
+          legend.text = element_text(size=rel(3.5)),
+          legend.position = c(0.75, 0.15),
+          legend.background = element_rect(fill = "white", color = "black")) +
+    guides(colour = guide_legend(override.aes = list(alpha = 1, size = 3)))
+
+gridExtra::grid.arrange(p1, p2, nrow = 1, left = "MAGT [˚C] Permafrost_cci", bottom = "MAGT [˚C] in situ data")
 ```
+
+
+
+
+
+

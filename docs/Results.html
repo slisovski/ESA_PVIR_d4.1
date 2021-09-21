@@ -285,7 +285,50 @@ R Library
   sf::sf_use_s2(FALSE)</code></pre>
 </details>
 <p><br/></p>
-<pre class="r"><code>map</code></pre>
+<pre class="r"><code>modDat &lt;- inSitu_temp
+
+mod0  &lt;- lm(MAGT_Permafrost_cci~Temp, data = modDat)
+modM  &lt;- data.frame(Temp=seq(min(inSitu_temp$Temp), max(inSitu_temp$Temp), length = 50))
+modM  &lt;- data.frame(modM, predict(mod0, newdata=modM, interval = &quot;prediction&quot;))
+
+p1 &lt;- ggplot(NULL, aes(x, y)) +
+    geom_point(data = modDat, mapping = aes(Temp, MAGT_Permafrost_cci), alpha = 0.1, shape = 16, fill = &quot;grey40&quot;) +
+    theme_bw() + 
+    geom_abline(slope = 1, intercept = 0, linetype = &quot;dashed&quot;) +
+    xlim(-15, 10) + ylim(-15, 10) +
+    geom_ribbon(data = modM, mapping = aes(x = Temp, y = fit, ymin = lwr, ymax = upr), alpha = 0.15) +
+    geom_line(  data = modM, mapping = aes(x = Temp, y = fit), col = &quot;cornflowerblue&quot;, size = 1.5) +
+    labs(y = &quot;&quot;, x = &quot;&quot;) +
+    theme(text = element_text(size=rel(4.5)))
+
+modDat &lt;- inSitu_temp %&gt;% mutate(cold = as.factor(if_else(coldSite, 1, 2)))
+mod1  &lt;- lm(MAGT_Permafrost_cci~Temp + cold + Temp*cold, data = modDat)
+modM  &lt;- expand.grid(Temp=seq(min(inSitu_temp$Temp), max(inSitu_temp$Temp), length = 50), cold = as.factor(c(1, 2)))
+modM &lt;- data.frame(modM, predict(mod1, newdata=modM, interval = &quot;prediction&quot;))
+
+p2 &lt;- ggplot(NULL, aes(x, y)) +
+    geom_point(data = modDat, mapping = aes(Temp, MAGT_Permafrost_cci, col = cold), alpha = 0.1, shape = 16) +
+    scale_color_manual(name = &quot;in situ MAGT&quot;, labels=c(&quot;&lt; 1˚C&quot;, &quot;&gt;= 1˚C&quot;), values = c(&quot;1&quot; = &quot;navy&quot;, &quot;2&quot; = &quot;magenta4&quot;)) +
+    theme_bw() + 
+    geom_abline(slope = 1, intercept = 0, linetype = &quot;dashed&quot;) +
+    xlim(-15, 10) + ylim(-15, 10) +
+    geom_ribbon(data = modM %&gt;% filter(cold==1 &amp; Temp&gt;min(modDat$Temp[modDat$cold==1]) &amp; Temp&lt;max(modDat$Temp[modDat$cold==1])), mapping = aes(x = Temp, y = fit, ymin = lwr, ymax = upr), alpha = 0.15) +
+    geom_line(  data = modM %&gt;% filter(cold==1 &amp; Temp&gt;min(modDat$Temp[modDat$cold==1]) &amp; Temp&lt;max(modDat$Temp[modDat$cold==1])), mapping = aes(x = Temp, y = fit), 
+              col = &quot;navy&quot;, size = 1.5) +
+    geom_ribbon(data = modM %&gt;% filter(cold==2 &amp; Temp&gt;min(modDat$Temp[modDat$cold==2]) &amp; Temp&lt;max(modDat$Temp[modDat$cold==2])), mapping = aes(x = Temp, y = fit, ymin = lwr, ymax = upr), alpha = 0.15) +
+    geom_line(  data = modM %&gt;% filter(cold==2 &amp; Temp&gt;min(modDat$Temp[modDat$cold==2]) &amp; Temp&lt;max(modDat$Temp[modDat$cold==2])), mapping = aes(x = Temp, y = fit), 
+              col = &quot;magenta4&quot;, size = 1.5) +
+    labs(y = &quot;&quot;, x = &quot;&quot;) +
+    theme(text = element_text(size=rel(4.5)),
+          legend.text = element_text(size=rel(3.5)),
+          legend.position = c(0.75, 0.15),
+          legend.background = element_rect(fill = &quot;white&quot;, color = &quot;black&quot;)) +
+    guides(colour = guide_legend(override.aes = list(alpha = 1, size = 3)))
+
+gridExtra::grid.arrange(p1, p2, nrow = 1, left = &quot;MAGT [˚C] Permafrost_cci&quot;, bottom = &quot;MAGT [˚C] in situ data&quot;)</code></pre>
+<pre><code>## Warning: Removed 15266 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 row(s) containing missing values (geom_path).</code></pre>
+<pre><code>## Warning: Removed 15266 rows containing missing values (geom_point).</code></pre>
 <p><img src="Results_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
 
 

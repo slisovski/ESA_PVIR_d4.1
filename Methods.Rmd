@@ -1,5 +1,5 @@
 ---
-title: "Methods for quality assessment"
+title: "2 Methods for quality assessment"
 output: html_document
 editor_options: 
   chunk_output_type: console
@@ -26,8 +26,6 @@ editor_options:
   sf::sf_use_s2(FALSE)
   ```
 </details><br/> 
-
-# 2 Methods for quality assessment
 
 The in situ dataset:
 

@@ -1,7 +1,12 @@
 name: "ESA_PVIR_d4.1"
 output_dir: "docs"
 navbar:
-  title: ""
+  title: "ESA_PVIR_d4.1"
+  left:
+    - text: "Methods"
+      href: Methods.html
+    - text: "Results"
+      href: Results.html
 output:
   html_document:
     theme: cosmo

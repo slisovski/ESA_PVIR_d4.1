@@ -1,0 +1,648 @@
+---
+title: "Methods for quality assessment"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+<details>
+  <summary>R Library</summary>
+  ```{r libraries, message=FALSE, warning=FALSE,  results=FALSE}
+  library(readxl)
+  library(ncdf4)
+  library(raster)
+  library(tidyverse)
+  library(ggforce)
+  library(grid)
+  library(sf)
+  sf::sf_use_s2(FALSE)
+  ```
+</details><br/> 
+
+# 2 Methods for quality assessment
+
+The in situ dataset:
+
+<details>
+  <summary>Dataset compilation and crds match-up</summary>
+  ```{r dataset v3, message=FALSE, warning=FALSE,  results=FALSE}
+  ## correct coordinates from v2
+  path    <- "/Users/slisovski/Documents/ESAproject/ValidationData/v2/20200813_MAGT_MATLAB_Style/"
+  metadat <- read.table(glue::glue("{path}MAGT_meta.csv"), sep = ";", dec = ".", header = TRUE) %>% as_tibble()
+  
+  v2Dat <- lapply(metadat$cci_ID, function(x) {
+      metadat[metadat$cci_ID==x,] %>%
+        bind_cols(read.table(glue::glue("{path}MAGT_{x}.csv"), sep = ";", dec = ".", header = TRUE) %>% as_tibble()) %>%
+        rename(Year = X) %>% pivot_longer(col = starts_with("X")) %>% rename(Depth = name, Temp = value) %>%
+        filter(!is.na(Temp)) %>% mutate(Depth = as.numeric(gsub("X", "", Depth)), Simulation = NA)
+      }) %>% bind_rows() %>% select(cci_ID, Name, Year, Latitude, Longitude) %>%
+      group_by(cci_ID, Name, Year) %>% filter(row_number() == 1)
+  
+  
+  ## GTD dataset
+  inSitu_temp <- read_excel("/Users/slisovski/Documents/ESAproject/ValidationData/20210218_focus_mean_yr_3.xlsx",
+                          col_types = c("numeric", rep("text", 3), rep("numeric", 7), "text", rep("numeric", 21), rep("text", 41))) %>%
+    select(c("cci_ID", "Name", "Source", "Longitude", "Latitude", "Year", "Depth"), starts_with("X")) %>%
+    mutate(Source = if_else(Source%in%c("M. Ulrich", "A. Kholodov", "PANGAEA", "Pangaea", "Wangetal"), "GTN-P", Source)) %>%
+    mutate(Source = if_else(Source=="GTN-P", "GTN-P & USGS", if_else(Source=="Nordica", "Nordicana-D", Source))) %>%
+    mutate(Source = if_else(Source=="Above", "NASA ABoVE", Source)) %>%
+    rowwise() %>% mutate(coldSite = if(all(is.na(c_across(X0:X2000)))) NA else {ifelse(any(c_across(X0:X2000)>1, na.rm = T), FALSE, TRUE)}) %>%
+    pivot_longer(col = starts_with("X")) %>% rename(maxDepth = Depth, Depth = name, Temp = value) %>% mutate(Depth = as.numeric(gsub("X", "", Depth))) %>%
+    filter(!is.na(Temp)) %>%
+    left_join(v2Dat, by = c("cci_ID", "Name", "Year")) %>%
+    mutate(Latitude.y = if_else(is.na(Latitude.y), Latitude.x, Latitude.y), Longitude.y = if_else(is.na(Longitude.y), Longitude.x, Longitude.y)) %>%
+    rename(Longitude = Longitude.y, Latitude = Latitude.y) %>%
+    filter(!is.na(Latitude), !is.na(Latitude)) %>% select(-Latitude.x, -Longitude.x)
+  ```
+</details>
+
+<details>
+  <summary>Figure 2.1 code</summary>
+  ```{r figure2.1, message=FALSE, warning=FALSE,  results=FALSE}
+  pl1 <- ggplot(inSitu_temp, aes(x = Depth)) +
+          geom_histogram(binwidth=25, position="dodge", col = "grey20", fill = "orange") +
+          theme_bw() +
+          theme(text = element_text(size=rel(4)))
+  
+  pl2 <- ggplot(inSitu_temp, aes(x = Year)) +
+          geom_histogram(binwidth=1, position="dodge", col = "grey20", fill = "lightsalmon") +
+          theme_bw() +
+          labs(y = "") +
+          theme(text = element_text(size=rel(4)))
+  
+  pl3 <- ggplot(inSitu_temp, aes(x = Temp)) +
+          geom_histogram(binwidth=1, position="dodge", col = "grey20", fill = "cornflowerblue") +
+          theme_bw() +
+          labs(y = "") +
+          theme(text = element_text(size=rel(4)))
+  
+  png("figures/Figure_2.1.png", width = 38, height = 9, units = "cm", res = 250)
+  gridExtra::grid.arrange(pl1, pl2, pl3, nrow = 1)
+  dev.off()
+  ```
+</details><br/>
+  
+
+![](figures/Figure_2.1.png)
+_Figure 2.1: Sample size of complete in situ dataset of mean annual ground temperatures (MAGT) at discrete depths (left), for the years 1980 to 2019 (center), and across temperatures (right)._
+
+## Pair-wise Match-Up Evaluation
+
+We constructed a pixel-based pair-wise Permafrost_cci Match-up data collection based on 
+
+i) standardised in situ ground temperature (GT) data from 1997 to 2019 with a circum-Arctic geographic coverage, providing mean annual ground temperature (MAGT) in discrete measurement depths per year. This data collection is assembled as merged and newly standardised data from the community GT data archives across all permafrost zones (continuous, discontinuous, sporadic, and isolated). We also use the in situ MAGT time series for the binary evaluation of permafrost abundance.
+
+Reference in situ data sets for the Match-up evaluation are
+- in situ MAGT [Latitude, Longitude] in discrete depths in annual resolution from 1997 to 2019
+- in situ PFR [Latitude, Longitude] permafrost probability in annual resolution from 1997 to 2019
+
+ii) standardised in situ active layer thickness (ALT) data from 1997 to 2019 with a circum-Arctic geographic coverage. We also use the ALT time series for a binary evaluation of permafrost abundance. This in situ data collection covers the continuous Permafrost zone.
+
+Reference in situ data sets for the Match-up evaluation are
+- in situ ALT [Latitude, Longitude] in annual resolution from 1997 to 20182019
+- in situ PFR [Latitude, Longitude] permafrost probability in annual resolution from 1997 to 20182019
+
+...
+
+## Assessment of Permafrost Temperature
+
+### In Situ Ground Temperature Reference Data Generation
+
+<details>
+  <summary>Match-up code</summary>
+  ```{r MAGT matchup, eval=FALSE}
+  ## path with files from https://catalogue.ceda.ac.uk/uuid/b25d4a6174de4ac78000d034f500a268
+  path    <- "/Users/slisovski/Documents/ESAproject/SimulationData/GroundTemperature/"
+  tempFls <- data.frame(fl = list.files(path))
+  tempFls$year <- as.numeric(sapply(strsplit(tempFls$fl, "-"), function(x) x[7]))
+
+  inSitu_temp$MAGT_Permafrost_cci  <- NA
+
+  for(y in unique(tempFls$year)) {
+
+    cat(sprintf('\r%d', y))
+  
+    indTab <- which(inSitu_temp$Year==y)
+    subTab <- st_as_sf(inSitu_temp[indTab,], coords = c("Longitude", "Latitude"), crs = 4326)
+  
+    st <- stack(lapply(c("GST", "T1m", "T2m", "T5m", "T10m"), function(x) {
+      r0 <- raster(glue::glue("{path}{tempFls$fl[tempFls$year==y]}"), varname = x)
+    }))
+    proj4string(st) <- "+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+  
+    extrM <- raster::extract(st, subTab %>% st_transform("+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs") %>%
+                     st_coordinates())
+  
+    inSitu_temp$MAGT_Permafrost_cci[indTab] <- apply(cbind(subTab$Depth/100, extrM), 1, function(x) {
+      if(sum(!is.na(x[-1]))>1) {
+      Hmisc::approxExtrap(c(0, 1, 2, 5, 10), x[-1], x[1])$y
+      } else NA
+    })
+  
+  }
+  save(inSitu_temp, file = "data/inSitu_temp.rda")
+  ```
+</details><br/>
+
+```{r, include=FALSE}
+load("data/inSitu_temp.rda")
+inSitu_temp <- inSitu_temp %>% filter(!is.na(Temp) & !is.na(MAGT_Permafrost_cci))
+```
+
+
+_Version 3 synthesised permafrost temperature at discrete depths_
+Permafrost_cci match-up in situ data in Phase 3 and Version 3 contains standardized annual ground temperatures (GTD) at various depths  with a circum-Arctic coverage across 1997 to 2019. The mean annual GTD data at different discrete depths and time stamps was compiled from available national and international programs. Depths include 0, 0.2, 0.25, 0.4, 0.5, 0.6, 0.75, 0.8, 1.0, 1.2, 1.6, 2.0, 2.4, 2.5, 3.0, 3.2, 4.0, 5.0, 10.0, 15.0, 20.0 meter below ground.
+
+Data sources:
+
+- [Global Terrestrial Network for Permafrost GTN-P WMO/GCOS](https://gtnp.arcticportal.org/)
+- Roshydromet RHM [national monitoring programme, Russia](http://meteo.ru/data/164-soil-temperature)  
+- Nordicana-D [world data repository for Polar research, Canada](http://www.cen.ulaval.ca/nordicanad/dpage.aspx?doi=45291SL34F28A9491014AFD; Allard et al., 2016, CEN 2013), 
+- NASA ABoVE ...
+
+<details>
+  <summary>Figure 2.2 code</summary>
+  ```{r figure2.2, message=FALSE, warning=FALSE,  results=FALSE}
+  ## base map
+    mp <-  st_read("~/Google Drive/GeoDat/NaturalEarth/50m_physical/ne_50m_land/ne_50m_land.shp", quiet = TRUE) %>% 
+    st_set_crs(4326) %>% st_buffer(0) %>% st_union() %>%
+    st_sym_difference(st_read("~/Google Drive/GeoDat/NaturalEarth/110m_physical/ne_110m_lakes/ne_110m_lakes.shp", quiet = TRUE) %>% 
+    st_set_crs(4326) %>% st_union()) %>%
+    st_transform("+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs") %>%
+    st_crop(st_bbox(c(xmin = -5.5e6, ymin = -4e6, xmax = 8e6, ymax = 4e6)))
+
+  map <- ggplot() +
+    geom_sf(data = mp, colour = NA, fill = "slategray2") +
+    theme_bw() +
+    xlim(-5e6, 7.5e6) + ylim(-3.8e6, 3.8e6)
+    
+  # rast <- raster("~/Documents/ESAproject/SimulationData/PermafrostExtent/ESACCI-PERMAFROST-L4-PFR-MODISLST_CRYOGRID-AREA4_PP-2018-fv03.0.nc")
+  # rast_spdf <- as(aggregate(rast, 15), "SpatialPixelsDataFrame")
+  # rast_df   <- as.data.frame(rast_spdf)
+  # colnames(rast_df) <- c("value", "x", "y")
+  # save(rast_df, file = "Rmarkdown/temp/rast_df.rda")
+  load("data/temp/rast_df.rda")
+  
+  mapDat <- inSitu_temp %>% group_by(Source) %>% mutate(nSource = n()) %>%
+    filter(!duplicated(Name)) %>% arrange(desc(nSource))
+  
+  crds_pts <- st_as_sf(mapDat, coords = c("Longitude", "Latitude")) %>% st_set_crs(4326) %>%
+  st_transform("+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs") %>% st_coordinates()
+  
+  png("figures/Figure_2.2.png", width = 38, height = 9, units = "cm", res = 250)
+  map +
+    geom_raster(data=rast_df, aes(x=x, y=y, fill=value), alpha=0.8, size=0) + 
+    scale_fill_gradient(low="slategray2", high="black") +
+    labs(fill = "Permafrost_cci PFR (2018)") +
+    ggnewscale::new_scale_fill() +
+    geom_point(data = data.frame(crds_pts, Source = mapDat$Source), 
+               aes(x = X, y = Y, fill = Source), 
+               color = "black", size = 2.5, alpha = 1, stroke = 1, shape = 21) +
+    scale_fill_brewer(palette = "Set1") +
+    labs(x = "", y = "") +
+    labs(fill = "Source of sites for GT Match-up")
+  dev.off()
+  ```
+</details>
+
+![](figures/Figure_2.2.png)
+_Figure 2.2. Northern hemisphere Permafrost_cci PFR permafrost probability and in situ ground temperature stations (grouped by data source)._
+
+
+<details>
+  <summary>Figure 2.3 code</summary>
+  ```{r figure 2.3, message=FALSE, warning=FALSE,  results=FALSE}
+  template <- expand_grid(Source = unique(inSitu_temp$Source), below10 = c(TRUE, FALSE), below10cold = c(TRUE, FALSE))
+  
+  bp <- inSitu_temp %>% mutate(Group = Depth<1000) %>% 
+    group_by(Source, Group) %>%
+    summarize(n = n()) %>% mutate(group = 2) %>% filter(Group) %>%
+    bind_rows(inSitu_temp %>% mutate(Group = Depth<1000 & coldSite) %>% 
+                group_by(Source, Group) %>% summarize(n = n()) %>% mutate(group = 1) %>% filter(Group)) %>%
+    bind_rows(inSitu_temp %>% mutate(Group = TRUE) %>% 
+                group_by(Source, Group) %>%summarize(n = n()) %>% mutate(group = 3) %>% filter(Group)) %>%
+    arrange(Source, group) %>% full_join(tibble(group = c(3,2,1), name = c("all", "Depth < 10m", "Depth < 10m & MAGT < 1°C")))
+  
+  png("figures/Figure_2.3.png", width = 38, height = 9, units = "cm", res = 250)
+  ggplot(bp, aes(y=Source, x=n, fill=as.factor(name))) +
+            geom_bar(stat="identity", position = "dodge", orientation = "y", col = "black") +
+            scale_fill_manual(values = c("all" = "darkorange1", "Depth < 10m" =  "darkseagreen3", "Depth < 10m & MAGT < 1°C" = "dodgerblue2")) +
+            theme_bw() +
+            labs(x = "count", y = "") +
+            labs(fill = "Match-up dataset (1997-2019)") +
+            theme(axis.title = element_text(size=rel(2)),
+                  axis.text = element_text(size=rel(1.5)),
+                  legend.text = element_text(size=rel(1.5)),
+                  legend.title = element_text(size=rel(1.5)))
+  dev.off()
+  ```
+</details><br/>
+
+![](figures/Figure_2.3.png)
+_Figure 2.3. Sample size of in situ MAGT match up dataset grouped by data source._
+
+<details>
+  <summary>Figure 2.4 code</summary>
+  ```{r figure2.4, message=FALSE, warning=FALSE}
+  mapDat <- inSitu_temp %>% filter(coldSite, !duplicated(Name))
+  
+  crds_pts <- st_as_sf(mapDat, coords = c("Longitude", "Latitude")) %>% st_set_crs(4326) %>%
+  st_transform("+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs") %>% st_coordinates()
+  
+  png("figures/Figure_2.4.png", width = 38, height = 9, units = "cm", res = 250)
+  map +
+    geom_raster(data=rast_df, aes(x=x, y=y, fill=value), alpha=0.8, size=0, show.legend = TRUE) + 
+    scale_fill_gradient(low="slategray2", high="black") +
+    geom_point(data = data.frame(crds_pts), 
+                 aes(x = X, y = Y), 
+                 fill = "cornflowerblue", size = 2.5, alpha = 1, shape = 21) +
+    labs(x = "", y = "", title = "", fill = "Permafrost_cci PFR (2018)  ") +
+    theme(plot.title = element_text(size=15, hjust = 0.5)) +
+    annotate("text", x = -4200000, y = 3700000, label= "MAGT <1°C", size = 3)
+  dev.off()
+  ```
+</details>
+
+![](Figures/figure_2.4.png)
+_Figure 2.4. Northern hemisphere Permafrost_cci PFR permafrost probability and in situ ground temperature stations with MAGT <1 °C (right) and sites with measurement in depths >=40 cm._
+
+Mean Annual Ground Temperatures (MAGT) were used to calculate the annual mean temperature for each available depth using metadata information,allowing to assess the quality of each temperature measured temperature. Metadata include the ratio of missing data per month/year (missing days per year/365) and the amount of completely missing months. We did not calculate the annual mean for sites and depth that had >20% missing values per year or if more than one complete month was missing. An exception was made for the data of GTN-P (2018) which already represented temperature at the depth of Zero Annual Amplitude (ZAA).
+
+_Table 2.1. Example of how the compiled data set provides the metadata information of yearly values. Mxx = ratio of missing values per month/year at depth xx m. mMxx = number of completely missing months per year at depth xx m._
+![](figures/Table_2.1.png)
+
+### Continous Updates of the Ground Temperature Match-up Data Sets
+
+The in situ dataset (_synthesised GT at discrete depths_) contains `r inSitu_temp %>% nrow()` Match-up pairs in time and depth from `r inSitu_temp %>% group_by(Name) %>% summarize(n = n()) %>% nrow()` sites. The dataset includes a large group with MAGT > 0°C from boreholes that were specifically samples aling the southern boundary of the _isolated permafrost_ zone.
+
+_Exclusion of non-permafrost temperatures in GT Match-up Data Set v1 (Validation in phase 1, CRDPv0 2019)_
+
+For straightforward Match-up analyses in the first validation round [RD-7], we evaluated only permafrost temperature and not ground temperature in general. Therefore, we excluded all stations with in situ measurements of MAGT ≥1 °C at least once (independent of measurement depth) from the match-up analyses. This GTD Match-up dataset, with all ‘warm temperature’ station types excluded, contained only n = 3185 match-up pairs in time and depth. The new assessment (as detailed below) includes non-permafrost sites and considers more than 10.000 match-up pairs.
+
+_Inclusion of warm temperatures, exclusion of high mountain, mountain top and Yedoma boreholes in GT Match-up Data Set v2 (Validation in phase 2, CRDPv1 2020)_
+
+We conduct the second validation round in phase 2 using
+i) the GTD data collection with also the ‘non-permafrost’ ground temperature with MAGT ≥1 °C included (depths down to 10 m). This GTD Match-up data set for Permafrost_cci MAGT in 0, 0.2, 0.25, 0.4, 0.5, 0.6, 0.75, 0.8, 1.0, 1.2, 1.6, 2.0, 2.4, 2.5, 3.0, 3.2, 4.0, 5.0, 10.0 m depth included n = 13695 Match-up pairs in time and depth 
+ii) the GTD data collection restricted to MAGT <1 °C (depths down to 10 m) that included n = 3186 Match-up pairs in time and depth. As especially the Russian boreholes have only few measurements at exactly 1 or 2 m depth, we started interpolating temperature values for the Permafrost_cci focus depths. To achieve this, we only use sites with at least three sensors in the lower depth down to 1.20 m. Interpolation was conducted by linear regression between two single measurement depths, resulting in separate equations for each sensor-pair and year.
+Please note that we excluded all sites that are not representative of the landscape-scale of in-situ measurements from all three Match-up data collections: these are mountain sites (n = 18) that are specifically assessed by PERMOS, small-scale landscape anomalies such as very local peatland patches or in-situ measurements in pingos (ice hills, n = 3). Please also note that we excluded all sites within the Siberian Yedoma area (shape file from Bryant et al., 2017) due to incorrect parameterisation of Permafrost_cci CryoGrid-3 of Yedoma stratigraphy (n = 7).
+
+_GT Match-up Data Set v3 (Validation in phase 3, CRDPv2 2021)_
+
+We conduct the second validation round in phase 3 using
+
+i) the GTD data collection with also the ‘non-permafrost’ ground temperature with MAGT ≥1 °C included (depths down to 10 m). This GTD Match-up data set for Permafrost_cci MAGT interpolated in 0, 0.2, 0.25, 0.4, 0.5, 0.6, 0.75, 0.8, 1.0, 1.2, 1.6, 2.0, 2.4, 2.5, 3.0, 3.2, 4.0, 5.0, 10.0 m depth includes n = *xx* Match-up pairs in time and depth 
+We also conduct Match-up analyses with focus on permafrost temperature using
+ii) the GTD data collection restricted to MAGT <1 °C (depths down to 10 m).
+This GTD Match-up data set includes n = *xx* Match-up pairs in time and depth for Permafrost_cci MAGT interpolated in 0, 0.2, 0.25, 0.4, 0.5, 0.6, 0.75, 0.8, 1.0, 1.2, 1.6, 2.0, 2.4, 2.5, 3.0, 3.2, 4.0, 5.0, 10.0 m depth and n = xx Match-up pairs in time and depth for Permafrost_cci MAGT in 0, 1, 2, 5, 10 m depth.
+
+_v2 and v3 comparison_
+
+<details>
+  <summary>Version 2 data compilation</summary>
+  ```{r v2, eval = FALSE}
+  path    <- "/Users/slisovski/Documents/ESAproject/ValidationData/v2/20200813_MAGT_MATLAB_Style/"
+  metadat <- read.table(glue::glue("{path}MAGT_meta.csv"), sep = ";", dec = ".", header = TRUE) %>% as_tibble()
+  
+  v2Dat <- lapply(metadat$cci_ID, function(x) {
+      metadat[metadat$cci_ID==x,] %>%
+        bind_cols(read.table(glue::glue("{path}MAGT_{x}.csv"), sep = ";", dec = ".", header = TRUE) %>% as_tibble()) %>%
+        rename(Year = X) %>% pivot_longer(col = starts_with("X")) %>% rename(Depth = name, Temp = value) %>%
+        filter(!is.na(Temp)) %>% mutate(Depth = as.numeric(gsub("X", "", Depth)), Simulation = NA)
+      }) %>% bind_rows()
+  ```
+</details>
+
+<details>
+  <summary>Version 2 match up</summary>
+  ```{r v2match, eval = FALSE}
+  path    <- "/Users/slisovski/Documents/ESAproject/SimulationData/v2/GroundTemperature/"
+  tempFls <- data.frame(fl = list.files(path))
+  tempFls$year <- as.numeric(sapply(strsplit(tempFls$fl, "-"), function(x) x[7]))  
+  
+  for(y in unique(v2Dat$Year[v2Dat$Year%in%tempFls$year])) {
+  
+    cat(sprintf('\r%d', y))
+  
+    indTab <- which(v2Dat$Year==y)
+    subTab <- st_as_sf(v2Dat[indTab,], coords = c("Longitude", "Latitude"), crs = 4326)
+  
+    st <- stack(lapply(c("GST", "T1m", "T2m", "T5m", "T10m"), function(x) {
+      r0 <- raster(glue::glue("{path}{tempFls$fl[tempFls$year==y]}"), varname = x)
+    }))
+    proj4string(st) <- "+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+  
+    extrM <- raster::extract(st, subTab %>% st_transform("+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs") %>%
+                     st_coordinates())
+  
+    v2Dat$Simulation[indTab] <- apply(cbind(subTab$Depth/100, extrM), 1, function(x) {
+      if(sum(!is.na(x[-1]))>1) {
+      Hmisc::approxExtrap(c(0, 1, 2, 5, 10), x[-1], x[1])$y
+      } else NA
+    })
+    
+  }
+  save(v2Dat, file = "data/v2Dat_matchup.rda")
+  ```
+</details><br/>
+
+```{r include=FALSE}
+load("data/v2Dat_matchup.rda")
+```
+
+<details>
+  <summary>Match up v2 and v3</summary>
+  ```{r v2v3merge}
+  merDat <- v2Dat %>% 
+    select(cci_ID, Name, Source, Year, Depth, Simulation, Temp) %>% 
+    rename(MAGT_Permafrost_cci = Simulation) %>%
+    filter(Year %in% c(1997:2018)) %>% full_join(inSitu_temp, by = c("cci_ID", "Name", "Source", "Year", "Depth"))
+  ```
+</details><br/>
+
+<details>
+  <summary>Figure 2.4: code</summary>
+  ```{r Fig01, fig.show=FALSE, results=FALSE, warning=FALSE, message=FALSE}
+  f01a <- ggplot(merDat) +
+            geom_point(aes(x = Temp.x, y = Temp.y), size = 2.5, alpha = 0.25, shape = 16) +
+            theme_bw() +
+            labs(x = "", y = "", title = "in situ MAGT") +
+            theme(text = element_text(size=rel(4.5)),
+                  plot.title = element_text(size=20))
+            
+  f01b <-  ggplot(merDat) +
+            geom_point(aes(x = MAGT_Permafrost_cci.x, y = MAGT_Permafrost_cci.y), size = 2.5, alpha = 0.25, shape = 16) +
+            theme_bw() +
+            labs(x = "", y = "", title = "simulated MAGT") +
+            theme(text = element_text(size=rel(4.5)),
+                  plot.title = element_text(size=20))
+  
+  png("figures/Figure_2.7.png", width = 20, height = 10, units = "cm", res = 100)
+  gridExtra::grid.arrange(f01a, f01b, nrow = 1, bottom = textGrob("MAGT v2", gp=gpar(fontsize=20)), 
+                          left = textGrob("MAGT v3", gp=gpar(fontsize=20), rot = 90))
+  dev.off()
+  ```
+</details>
+
+![](figures/Figure_2.7.png)
+
+_Figure 2.7. Comparison between in situ (left) and Match-up (right) datasets of version 2 and version 3._
+
+The MAGT is often based on several measurements across the year (or on min an max measurements). In v2.0 some calculations were false and are now corrected in v3.0. 
+
+<details>
+  <summary>Figure 2.8: code</summary>
+  ```{r}
+  subDat <- merDat %>% filter(!is.na(Temp.x)) %>% rowwise() %>% mutate(diffTemp = Temp.x - Temp.y) %>% 
+    filter(!is.na(diffTemp)) %>%
+    arrange(abs(diffTemp))
+                              
+  png("figures/Figure_2.8.png", width = 20, height = 10, units = "cm", res = 100)
+  ggplot(subDat, aes(x = diffTemp)) +
+    geom_histogram(binwidth=.1, position="dodge") +
+    scale_fill_manual(values = c("goldenrod2", "cornflowerblue")) +
+    xlim(-2.5, 2.5) +
+    theme_bw() +
+    labs(fill='', x = "diff. in MAGT [°C] between v2.0 and v3.0", y = "Count") +
+    theme(text = element_text(size=rel(4)),
+          legend.text = element_text(size=12)) +
+    facet_zoom(ylim = c(0, 100))
+  dev.off()
+  ```
+</details>
+
+![](figures/Figure_2.8.png)
+
+_Figure 2.8: The extent of temperature correction between v2.0 and v3.0. The vast majority of values where correct and only a couple of sites needed relatively small corrections._
+
+The updated v3.0 contains new sites.
+
+<details>
+  <summary>Figure 2.9: code</summary>
+  ```{r}
+  subDat <- merDat %>% filter(!is.na(Temp.y) & is.na(Temp.x)) %>%
+    select(cci_ID, Name, Source, Year, Longitude, Latitude) %>%
+    group_by(Name) %>% mutate(count = n()) %>% filter(!duplicated(Name))
+  
+  crds_pts <- st_as_sf(subDat, coords = c("Longitude", "Latitude")) %>% st_set_crs(4326) %>%
+      st_transform("+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs") %>%
+      st_coordinates()
+  
+   f04 <- map +
+          geom_point(data = data.frame(crds_pts, size = subDat$count), aes(x = X, y = Y, size = size), 
+                     color = "orange", alpha = 0.6, stroke = 1, shape = 16) +
+          labs(size = "Sample size") +
+          labs(x = "", y = "")
+   
+    png("figures/Figure_2.9.png", width = 15, height = 10, units = "cm", res = 100)
+    f04
+    dev.off()
+  ```
+</details>
+
+![](Figures/Figure_2.9.png)
+
+_Figure 2.9: Location and sample size of new in situ sites included in `synthesised GT at discrete depths v3.0` dataset._
+
+
+
+### Characteristics of Ground Temperature Match-up Data Set
+
+...
+
+<details>
+  <summary>Figure 2.10 code</summary>
+  ```{r figure2.10, message=FALSE, warning=FALSE}
+  subDat <- inSitu_temp %>% filter(Depth<1000) %>%
+    pivot_longer(col = c("Temp", "MAGT_Permafrost_cci")) %>%
+    mutate(name = if_else(name=="Temp", "in situ", "permafrost_cci"))
+  
+  png("figures/Figure_2.10.png", width = 22, height = 6, units = "cm", res = 250)
+  ggplot(subDat, aes(x = value, fill= name)) +
+    geom_histogram(binwidth=1, position="dodge", aes(y=(..count../sum(..count..))*100)) +
+    scale_fill_manual(values = c("cornflowerblue", "goldenrod2")) +
+    xlim(-14, 10) +
+    theme_bw() +
+    labs(fill='', x = "MAGT [°C]", y = "Percentage") +
+    theme(text = element_text(size=rel(4)),
+          legend.text = element_text(size=14))
+  dev.off()  
+  ```
+</details>
+
+
+![](figures/Figure_2.10.png)
+_Figure 2.10. Frequency distribution of the Match-up data collection v3, at all discrete depths ≤10 m in entire ranges with steps of 1 °C._
+
+<details>
+  <summary>figure 2.11 code</summary>
+  ```{r figure2.11, message=FALSE, warning=FALSE}
+  subDat <- inSitu_temp %>% filter(Depth<1000, !coldSite) %>%
+    pivot_longer(col = c("Temp", "MAGT_Permafrost_cci")) %>%
+    mutate(name = if_else(name=="Temp", "in situ", "permafrost_cci"))
+  
+  png("figures/Figure_2.11.png", width = 22, height = 6, units = "cm", res = 250)
+  ggplot(subDat, aes(x = value, fill= name)) +
+    geom_histogram(binwidth=1, position="dodge", aes(y=(..count../sum(..count..))*100)) +
+    scale_fill_manual(values = c("cornflowerblue", "goldenrod2")) +
+    xlim(-14, 10) +
+    theme_bw() +
+    labs(fill='', x = "MAGT [°C]", y = "Percentage") +
+    theme(text = element_text(size=rel(4)),
+          legend.text = element_text(size=14))
+  dev.off()  
+  ```
+</details>
+
+
+![](Figures/Figure_2.11.png)
+_Figure 2.11. Frequency distribution of the Match-up data collection v3, with MAGT ≥1 °C excluded (excluded samples = `r inSitu_temp %>% filter(Depth<1000, !coldSite) %>% nrow()`). ...._
+
+<details>
+  <summary>Figure 2.12 code</summary>
+  ```{r figure 2.12}
+  subDat <- inSitu_temp %>% 
+      pivot_longer(col = c("Temp", "MAGT_Permafrost_cci")) %>%
+      mutate(name = if_else(name=="Temp", "in situ", "permafrost_cci")) %>%
+      filter(Depth %in% c(75, 80, 100, 120, 200, 240))
+  
+  png("figures/Figure_2.12.png", width = 22, height = 20, units = "cm", res = 250)
+  ggplot(subDat, aes(x = value, fill= name)) +
+     geom_histogram(binwidth=1, position="dodge", aes(y=(..count../sum(..count..))*100)) +
+     facet_grid(Depth~.,scales="free") +
+     scale_fill_manual(values = c("cornflowerblue", "goldenrod2")) +
+     xlim(-14, 10) +
+     theme_bw() +
+     labs(y = "Percentage", fill = "")
+  dev.off()
+  ```
+</details>
+
+![](figures/Figure_2.12.png)
+
+_Figure 2.12. Frequency distribution of the Match-up data collection v3 confined to Match-up pairs in specific ground temperature sensor depths (0.75, 0.80, 100, 120, 200, 240 cm). ...._
+
+### PERMOS Reference GST and GTD data generation
+### Satellite derived Freeze/Thaw Surface Status GT evaluation data set generation
+
+## Assessment of Active Layer Thickness
+### In-Situ Active Layer Thickness Reference Data Generation
+
+<details>
+  <summary>ALT dataset compilation and cci matchup</summary>
+  ```{r, eval = FALSE}
+  inSitu_alt <- read_excel("data/ALT_CALM+RAS_v2020.xlsx") %>%
+    mutate(ALT_Permafrost_cci = NA)
+    
+  path    <- "/Users/slisovski/Documents/ESAproject/SimulationData/ActiveLayerThickness/"
+  altFls  <- data.frame(fl = list.files(path))
+  altFls$year <- as.numeric(sapply(strsplit(altFls$fl, "-"), function(x) x[7]))
+
+  inSitu_alt <- subset(inSitu_alt, year %in% altFls$year)
+  
+  for(y in unique(inSitu_alt$year)) {
+  
+    cat(sprintf('\r%d', y))
+  
+    indTab <- which(inSitu_alt$year==y)
+    subTab <- st_as_sf(inSitu_alt[indTab,], coords = c("Longitude", "Latitude"), crs = 4326)
+  
+    st <- raster(glue::glue("{path}{altFls$fl[altFls$year==y]}"))
+  
+    extrM <- extract(st, subTab %>% st_transform(proj4string(st)) %>%
+                     st_coordinates())
+  
+    inSitu_alt$ALT_Permafrost_cci[indTab] <- extrM
+  }
+  save(inSitu_alt, file = "data/inSitu_alt.rda")
+  ```
+</details><br/>
+
+```{r include=FALSE}
+load("data/inSitu_alt.rda")
+```
+
+The comprehensive CALM data collection of ALT time series is available for download on https://www2.gwu.edu/~calm/. For an estimation of ALT, it is relevant to measure active layer depths in the end of the active-layer thawing season. This maximum thaw depth measured in late summer represents the ALT of a specific year. For some measurements in the CALM ALT data collection, metadata information indicate that a value was measured earlier in summer during a year. These active layer depth measurements, not representing the Permafrost ECV ALT, were discarded.
+
+Version 1 synthesised active layer thickness match-up collection (2003 to 2017) (2019)
+Permafrost_cci Match-up data set in phase 1, Version 1: standardised active layer thickness ALT data with annual resolution from 2003 and 2017 with a circum-Arctic geographic coverage. The collection contained data from 207 sites (China + Mongolia: 67, Greenland + Svalbard + Scandes: 11, Canada: 6, Russia: 57, USA: 207), with overall 1835 match-up pairs in time.
+
+Version 2 synthesised active layer thickness match-up collection (1997 to 2018) (2020)
+Permafrost_cci Match-up data set in phase 2, Version 2: standardised active layer thickness ALT data with annual resolution from 1997 and 2018 with a circum-Arctic geographic coverage. The collection contains data from 156 sites with 1835 Match-up pairs. Please note that we excluded all sites in Mongolia, Central Asia, and on the Tibetan Plateau.
+Please also note that we excluded in the 2020 validation also all sites within the Siberian Yedoma area (Bryant et al., 2017) due to incorrect parameterisation of Permafrost_cci CryoGrid of Yedoma stratigraphy
+
+*Version 3* synthesised active layer thickness match-up collection (1997 to 2019) (2021)
+Permafrost_cci Match-up data set in phase 3, Version 3: standardised active layer thickness ALT data with annual resolution from 1997 and 2019 with a circum-Arctic geographic coverage. The collection contains data from *xx* sites with *xx* Match-up pairs. Please note that we excluded all sites in Mongolia, Central Asia, and on the Tibetan Plateau.
+
+<details>
+  <summary>Figure 2.13 code</summary>
+  ```{r figure 2.13}
+  mapDat <- inSitu_alt %>% group_by(Name) %>% mutate(nName = n()) %>%
+    filter(!duplicated(Name)) %>% arrange(desc(nName))
+  
+  crds_pts <- st_as_sf(mapDat, coords = c("Longitude", "Latitude")) %>% st_set_crs(4326) %>%
+  st_transform("+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs") %>% st_coordinates()
+  
+  png("figures/Figure_2.13.png", width = 38, height = 9, units = "cm", res = 250)
+  map +
+    geom_raster(data=rast_df, aes(x=x, y=y, fill=value), alpha=0.8, size=0, show.legend = TRUE) + 
+    scale_fill_gradient(low="slategray2", high="black") +
+    geom_point(data = data.frame(crds_pts), 
+                 aes(x = X, y = Y), 
+                 fill = "gold1", size = 2.5, alpha = 1, shape = 21) +
+    labs(x = "", y = "", title = "", fill = "Permafrost_cci PFR (2018)  ") +
+    theme(plot.title = element_text(size=15, hjust = 0.5))
+  dev.off()
+  ```
+</details>
+
+![](figures/Figure_2.13.png)
+
+_Figure 2.13. Northern hemisphere Permafrost_cci PFR permafrost probability and in situ sites of active layer depth ALT (GTN-P CALM program)._
+
+...
+
+### Characteristics of ALT match-up data set
+
+## Assessments of Permafrost Extent
+### In Situ PE Reference Data Generation
+
+_Match-up Version 1 synthesised binary Permafrost Extent PFR (CRDPv0 2019)_
+
+Match-up data set in phase 1, Version 1:
+- Permafrost_cci CryoGrid-3 Permafrost fraction PFR per site and year given in 0, 20, 40, 60, 80 or 100%
+- A binary PFR data set from 2003 to 2017 was compiled from Version 1 synthesised mean annual GTD - discrete depths. 
+- Criteria permafrost abundance yes / no
+- One data set with Yes all measurements in depths (0 – 2m) MAGT ≤0.5 °C
+
+_Match-up Version 2 synthesised binary Permafrost Extent PFR (CRDPv1 2020)_
+
+Match-up data set in phase 2, Version 2:
+- Permafrost_cci CryoGrid 3 Permafrost fraction PFR per site and year is given in 0, 14, 29, 43, 57, 71 or 100%
+- A binary PFR data set from 1997 to 2018 is compiled from Version 2 synthesised mean annual GTD - discrete depths and Version 2 synthesised annual CALM ALT and active layer depth measurements from Russian expeditions (Bartsch, oral communication, 2020)
+- Criteria permafrost abundance yes / no
+- One data set with Yes if any measurements in depths (0 – 2.4 m) MAGT ≤0.5 °C and Yes to all ALT and ALD measurements <300 cm
+- Accuracy = (TP+TN)/(TP+TN+FP+FN), where: TP = True positive; FP = False positive; TN = True negative; FN = False negative
+- The formula for quantifying binary precision is: Precision = (TP) / (TP+FP)
+
+_Match-up Version 2 synthesised binary Permafrost Extent PFR (CRDPv2 2021)_
+
+Match-up data set in phase 3, Version 3:
+
+*Anything different to version 2??*
+
+<details>
+  <summary>Figure 2.13 code</summary>
+  ```{r}
+  
+  ```
+</details>
+  
+

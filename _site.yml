@@ -1,0 +1,7 @@
+name: "ESA_PVIR_d4.1"
+output_dir: "docs"
+navbar:
+  title: ""
+output:
+  html_document:
+    theme: cosmo

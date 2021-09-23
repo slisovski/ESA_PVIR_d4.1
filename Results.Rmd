@@ -177,7 +177,7 @@ editor_options:
                  aes(x = X, y = Y, col = coldSite, size = n), alpha = 0.8, shape = 4, stroke = 1, width = 60000, height = 60000) +
       scale_color_manual(values = c("firebrick", "cornflowerblue"), labels = c('MAGT [°C] >= 1', 'MAGT [°C] < 1')) +
       scale_size(range = c(0.15, 1.7)) +
-      labs(x = "", y = "", col = "", size = "Nr. measurements") +
+      labs(x = "", y = "", col = "0.99 percentile of residuals", size = "Nr. measurements") +
       theme(legend.position="bottom", legend.box="vertical", legend.margin=margin(),
             legend.background = element_rect(fill = "white"),
             legend.text = element_text(size=rel(0.8)),
@@ -196,7 +196,7 @@ editor_options:
 
 <details>
   <summary>Figure 3.3 code</summary>
-  ```{r include = FALSE, eval = FALSE}
+  ```{r}
   
   #### over Depths
   model1   <- gam(res ~ s(Depth), data = resTab)
@@ -262,116 +262,91 @@ editor_options:
   
 ![](figures/Figure_3.3.png)
 
+### Residuals over space
 
-```{r, include = FALSE, eval = FALSE}
-
-  geom_ribbon(data = dat[[1]], mapping = aes(x = Depth, y = fit, ymin = plwr, ymax = pupr), alpha = 0.15) +
-    geom_line(data = dat[[1]], mapping = aes(x = Depth, y = plwr), col = "grey10", size = 0.5, linetype = "dashed") +
-    geom_line(data = dat[[1]], mapping = aes(x = Depth, y = pupr), col = "grey10", size = 0.5, linetype = "dashed") +
-  geom_ribbon(data = dat[[2]] %>% filter(Depth<max(resTab %>% filter(!coldSite) %>% pull(Depth))), mapping = aes(x = Depth, y = fit, ymin = plwr, ymax = pupr), alpha = 0.15) +
-    geom_line(data = dat[[2]] %>% filter(Depth<max(resTab %>% filter(!coldSite) %>% pull(Depth))), 
-              mapping = aes(x = Depth, y = plwr), col = "firebrick", size = 0.5, linetype = "dashed") +
-    geom_line(data = dat[[2]] %>% filter(Depth<max(resTab %>% filter(!coldSite) %>% pull(Depth))), 
-              mapping = aes(x = Depth, y = pupr), col = "firebrick", size = 0.5, linetype = "dashed") +
-  geom_ribbon(data = dat[[3]], mapping = aes(x = Depth, y = fit, ymin = plwr, ymax = pupr), alpha = 0.15) +
-    geom_line(data = dat[[3]], mapping = aes(x = Depth, y = plwr), col = "cornflowerblue", size = 0.5, linetype = "dashed") +
-    geom_line(data = dat[[3]], mapping = aes(x = Depth, y = pupr), col = "cornflowerblue", size = 0.5, linetype = "dashed") +
+<details>
+  <summary>Figure 3.4 code</summary>
+  ```{r}
+  #### over Latitudes
+  model   <- gam(res ~ s(Latitude), data = resTab)
   
-  geom_point(data = resTab, mapping = aes(Depth, res, col = coldSite), alpha = 0.1, shape = 16, size = 1.5) +
   
-  geom_ribbon(data = dat[[1]], mapping = aes(x = Depth, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = "grey10") +
-    geom_line(data = dat[[1]], mapping = aes(x = Depth, y = fit), col = "grey10", size = 1.5) +
-  geom_ribbon(data = dat[[2]] %>% filter(Depth<max(resTab %>% filter(!coldSite) %>% pull(Depth))), 
-              mapping = aes(x = Depth, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = "grey10") +
-    geom_line(data = dat[[2]] %>% filter(Depth<max(resTab %>% filter(!coldSite) %>% pull(Depth))), 
-              mapping = aes(x = Depth, y = fit), col = "firebrick", size = 1.5) +
-  geom_ribbon(data = dat[[3]], mapping = aes(x = Depth, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = "grey10") +
-    geom_line(data = dat[[3]], mapping = aes(x = Depth, y = fit), col = "cornflowerblue", size = 1.5) +
+  ### confidence interval
+  newdat     <- data.frame(Latitude = seq(min(resTab$Latitude), max(resTab$Latitude), length = 100))
+  dat        <- lapply(list(model), predInterval, newdat = newdat)
   
-  labs(y = "Residuals", x = "MAGT [˚C] in situ data") +
-  theme(text = element_text(size=rel(4.5)))
-
-
-
-#### over Latitudes
-model1   <- gam(res ~ s(Latitude), data = resTab)
-model2   <- gam(res ~ s(Latitude), data = resTab %>% filter(!coldSite))
-model3   <- gam(res ~ s(Latitude), data = resTab %>% filter(coldSite))
-
-### confidence interval
-newdat     <- data.frame(Latitude = seq(min(resTab$Latitude), max(resTab$Latitude), length = 100))
-dat        <- lapply(list(model1, model2, model3), predInterval, newdat = newdat)
-
-ggplot(NULL, aes(x, y)) +
-  theme_bw() +
-  geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
-  geom_ribbon(data = dat[[1]], mapping = aes(x = Latitude, y = fit, ymin = plwr, ymax = pupr), alpha = 0.15) +
-    geom_line(data = dat[[1]], mapping = aes(x = Latitude, y = plwr), col = "grey10", size = 0.5, linetype = "dashed") +
-    geom_line(data = dat[[1]], mapping = aes(x = Latitude, y = pupr), col = "grey10", size = 0.5, linetype = "dashed") +
-  geom_ribbon(data = dat[[2]], mapping = aes(x = Latitude, y = fit, ymin = plwr, ymax = pupr), alpha = 0.15) +
-    geom_line(data = dat[[2]], mapping = aes(x = Latitude, y = plwr), col = "firebrick", size = 0.5, linetype = "dashed") +
-    geom_line(data = dat[[2]], mapping = aes(x = Latitude, y = pupr), col = "firebrick", size = 0.5, linetype = "dashed") +
-  geom_ribbon(data = dat[[3]], mapping = aes(x = Latitude, y = fit, ymin = plwr, ymax = pupr), alpha = 0.15) +
-    geom_line(data = dat[[3]], mapping = aes(x = Latitude, y = plwr), col = "cornflowerblue", size = 0.5, linetype = "dashed") +
-    geom_line(data = dat[[3]], mapping = aes(x = Latitude, y = pupr), col = "cornflowerblue", size = 0.5, linetype = "dashed") +
+  qtilesWarm     <- resTab %>% filter(!coldSite) %>% mutate(Latgr = as.character(cut(Latitude, seq(45, 90, length = 60)))) %>%
+    mutate(grLat = as.numeric(substring(Latgr, 2, 5)) + (as.numeric(substring(Latgr, 7, 10)) - as.numeric(substring(Latgr, 2, 5)))) %>%
+    group_by(grLat) %>% summarise(upper = quantile(res, probs = 0.05), lower = quantile(res, probs = 0.95))
   
-  geom_point(data = resTab, mapping = aes(Latitude, res, col = coldSite), alpha = 0.1, shape = 16, size = 1.5) +
+  qtilesCold     <- resTab %>% filter(coldSite) %>% mutate(Latgr = as.character(cut(Latitude, seq(45, 90, length = 60)))) %>%
+    mutate(grLat = as.numeric(substring(Latgr, 2, 5)) + (as.numeric(substring(Latgr, 7, 10)) - as.numeric(substring(Latgr, 2, 5)))) %>%
+    group_by(grLat) %>% summarise(upper = quantile(res, probs = 0.05), lower = quantile(res, probs = 0.95))
   
-  geom_ribbon(data = dat[[1]], mapping = aes(x = Latitude, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = "grey10") +
-    geom_line(data = dat[[1]], mapping = aes(x = Latitude, y = fit), col = "grey10", size = 1.5) +
-  geom_ribbon(data = dat[[2]], mapping = aes(x = Latitude, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = "grey10") +
-    geom_line(data = dat[[2]], mapping = aes(x = Latitude, y = fit), col = "firebrick", size = 1.5) +
-  geom_ribbon(data = dat[[3]], mapping = aes(x = Latitude, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = "grey10") +
-    geom_line(data = dat[[3]], mapping = aes(x = Latitude, y = fit), col = "cornflowerblue", size = 1.5) +
+    
+  pl1 <- ggplot(NULL, aes(x, y)) +
+    theme_bw() +
+    geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
+    geom_point(data = resTab, mapping = aes(Latitude, res, col = coldSite), alpha = 0.05, shape = 16, size = 0.7, show.legend = FALSE) +
+               scale_color_manual(values = c("firebrick", "cornflowerblue"), labels = c('MAGT [°C] >= 1', 'MAGT [°C] < 1')) +
+    
+    geom_ribbon(data = dat[[1]], mapping = aes(x = Latitude, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = "grey10") +
+      geom_line(data = dat[[1]], mapping = aes(x = Latitude, y = fit), col = "grey10", size = 1.5) +
+    
+    geom_smooth(qtilesWarm, mapping = aes(x = grLat, y = lower), col = "firebrick", size = 0.5, se = FALSE, span = 0.45) +
+    geom_smooth(qtilesWarm, mapping = aes(x = grLat, y = upper), col = "firebrick", size = 0.5, se = FALSE, span = 0.45) +
+    
+    geom_smooth(qtilesCold, mapping = aes(x = grLat, y = lower), col = "cornflowerblue", size = 0.5, se = FALSE, span = 0.45) +
+    geom_smooth(qtilesCold, mapping = aes(x = grLat, y = upper), col = "cornflowerblue", size = 0.5, se = FALSE, span = 0.45) +
+    
+    ylim(-7,5) +
+    coord_flip() +
   
-  labs(y = "Residuals", x = "Latitude of MAGT [˚C] in situ data") +
-  theme(text = element_text(size=rel(4.5)))
+    
+    labs(y = "Residuals", x = "Latitude of MAGT [˚C] in situ data") +
+    theme(text = element_text(size=rel(3.5)))
 
 
-#### over Longitudes
-model1   <- gam(res ~ s(Longitude), data = resTab)
-model2   <- gam(res ~ s(Longitude), data = resTab %>% filter(!coldSite))
-model3   <- gam(res ~ s(Longitude), data = resTab %>% filter(coldSite))
-
-### confidence interval
-newdat     <- data.frame(Longitude = seq(min(resTab$Longitude), max(resTab$Longitude), length = 100))
-dat        <- lapply(list(model1, model2, model3), predInterval, newdat = newdat)
-
-ggplot(NULL, aes(x, y)) +
-  theme_bw() +
-  geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
-  geom_ribbon(data = dat[[1]], mapping = aes(x = Longitude, y = fit, ymin = plwr, ymax = pupr), alpha = 0.15) +
-    geom_line(data = dat[[1]], mapping = aes(x = Longitude, y = plwr), col = "grey10", size = 0.5, linetype = "dashed") +
-    geom_line(data = dat[[1]], mapping = aes(x = Longitude, y = pupr), col = "grey10", size = 0.5, linetype = "dashed") +
-  geom_ribbon(data = dat[[2]], mapping = aes(x = Longitude, y = fit, ymin = plwr, ymax = pupr), alpha = 0.15) +
-    geom_line(data = dat[[2]], mapping = aes(x = Longitude, y = plwr), col = "firebrick", size = 0.5, linetype = "dashed") +
-    geom_line(data = dat[[2]], mapping = aes(x = Longitude, y = pupr), col = "firebrick", size = 0.5, linetype = "dashed") +
-  geom_ribbon(data = dat[[3]], mapping = aes(x = Longitude, y = fit, ymin = plwr, ymax = pupr), alpha = 0.15) +
-    geom_line(data = dat[[3]], mapping = aes(x = Longitude, y = plwr), col = "cornflowerblue", size = 0.5, linetype = "dashed") +
-    geom_line(data = dat[[3]], mapping = aes(x = Longitude, y = pupr), col = "cornflowerblue", size = 0.5, linetype = "dashed") +
+  #### over Longitudes
+  model   <- gam(res ~ s(Longitude), data = resTab)
   
-  geom_point(data = resTab, mapping = aes(Longitude, res, col = coldSite), alpha = 0.1, shape = 16, size = 1.5) +
   
-  geom_ribbon(data = dat[[1]], mapping = aes(x = Longitude, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = "grey10") +
-    geom_line(data = dat[[1]], mapping = aes(x = Longitude, y = fit), col = "grey10", size = 1.5) +
-  geom_ribbon(data = dat[[2]], mapping = aes(x = Longitude, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = "grey10") +
-    geom_line(data = dat[[2]], mapping = aes(x = Longitude, y = fit), col = "firebrick", size = 1.5) +
-  geom_ribbon(data = dat[[3]], mapping = aes(x = Longitude, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = "grey10") +
-    geom_line(data = dat[[3]], mapping = aes(x = Longitude, y = fit), col = "cornflowerblue", size = 1.5) +
+  ### confidence interval
+  newdat     <- data.frame(Longitude = seq(-180, 180, length = 100))
+  dat        <- lapply(list(model), predInterval, newdat = newdat)
   
-  labs(y = "Residuals", x = "Longitude of MAGT [˚C] in situ data") +
-  theme(text = element_text(size=rel(4.5)))
+  LonGroup <- data.frame(Lon = seq(-180, 180, length = 180), LonGr = 1:180)
+  
+  qtilesWarm     <- resTab %>% filter(!coldSite) %>% mutate(LonGr = cut(Longitude, seq(-180, 180, length = 180), labels = FALSE)) %>%
+    left_join(LonGroup, by = "LonGr") %>%
+    group_by(Lon) %>% summarise(upper = quantile(res, probs = 0.05), lower = quantile(res, probs = 0.95))
+  
+  qtilesCold     <- resTab %>% filter(coldSite) %>% mutate(LonGr = cut(Longitude, seq(-180, 180, length = 180), labels = FALSE)) %>%
+    left_join(LonGroup, by = "LonGr") %>%
+    group_by(Lon) %>% summarise(upper = quantile(res, probs = 0.05), lower = quantile(res, probs = 0.95))
+    
+  pl2 <- ggplot(NULL, aes(x, y)) +
+    theme_bw() +
+    geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
+    geom_point(data = resTab, mapping = aes(Longitude, res, col = coldSite), alpha = 0.05, shape = 16, size = 0.7, show.legend = FALSE) +
+               scale_color_manual(values = c("firebrick", "cornflowerblue"), labels = c('MAGT [°C] >= 1', 'MAGT [°C] < 1')) +
+    
+    geom_ribbon(data = dat[[1]], mapping = aes(x = Longitude, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = "grey10") +
+      geom_line(data = dat[[1]], mapping = aes(x = Longitude, y = fit), col = "grey10", size = 1.5) +
+    
+    geom_smooth(qtilesWarm %>% filter(Lon>0), mapping = aes(x = Lon, y = lower), col = "firebrick", size = 0.5, se = FALSE, span = 0.45) +
+    geom_smooth(qtilesWarm %>% filter(Lon>0), mapping = aes(x = Lon, y = upper), col = "firebrick", size = 0.5, se = FALSE, span = 0.45) +
+    
+    geom_smooth(qtilesCold, mapping = aes(x = Lon, y = lower), col = "cornflowerblue", size = 0.5, se = FALSE, span = 0.45) +
+    geom_smooth(qtilesCold, mapping = aes(x = Lon, y = upper), col = "cornflowerblue", size = 0.5, se = FALSE, span = 0.45) +
+  
+    labs(y = "Residuals", x = "Longitude of MAGT [˚C] in situ data") +
+    theme(text = element_text(size=rel(3)))
 
-png("figures/resTmp.png", width = 30, height = 50, units = "cm", res = 250)
-gridExtra::grid.arrange(pl1, pl2, pl3, pl4, pl5, nrow = 5)
-dev.off()
-
-```
-
-
-
-
-
-
-
-
+  png("figures/Figure_3.4.png", width = 20, height = 10, units = "cm", res = 250)
+  gridExtra::grid.arrange(pl1, pl2, layout_matrix = matrix(c(1,2), ncol = 2, byrow = TRUE))
+  dev.off()
+  ```
+</details><br/>
+  
+![](figures/Figure_3.4.png)

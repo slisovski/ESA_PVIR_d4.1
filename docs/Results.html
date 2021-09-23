@@ -281,55 +281,167 @@ R Library
   library(tidyverse)
   library(ggforce)
   library(grid)
+  library(mgcv)
   library(sf)
   sf::sf_use_s2(FALSE)</code></pre>
 </details>
 <p><br/></p>
-<pre class="r"><code>modDat &lt;- inSitu_temp
-
-mod0  &lt;- lm(MAGT_Permafrost_cci~Temp, data = modDat)
-modM  &lt;- data.frame(Temp=seq(min(inSitu_temp$Temp), max(inSitu_temp$Temp), length = 50))
-modM  &lt;- data.frame(modM, predict(mod0, newdata=modM, interval = &quot;prediction&quot;))
-
-p1 &lt;- ggplot(NULL, aes(x, y)) +
-    geom_point(data = modDat, mapping = aes(Temp, MAGT_Permafrost_cci), alpha = 0.1, shape = 16, fill = &quot;grey40&quot;) +
-    theme_bw() + 
-    geom_abline(slope = 1, intercept = 0, linetype = &quot;dashed&quot;) +
-    xlim(-15, 10) + ylim(-15, 10) +
-    geom_ribbon(data = modM, mapping = aes(x = Temp, y = fit, ymin = lwr, ymax = upr), alpha = 0.15) +
-    geom_line(  data = modM, mapping = aes(x = Temp, y = fit), col = &quot;cornflowerblue&quot;, size = 1.5) +
-    labs(y = &quot;&quot;, x = &quot;&quot;) +
-    theme(text = element_text(size=rel(4.5)))
-
-modDat &lt;- inSitu_temp %&gt;% mutate(cold = as.factor(if_else(coldSite, 1, 2)))
-mod1  &lt;- lm(MAGT_Permafrost_cci~Temp + cold + Temp*cold, data = modDat)
-modM  &lt;- expand.grid(Temp=seq(min(inSitu_temp$Temp), max(inSitu_temp$Temp), length = 50), cold = as.factor(c(1, 2)))
-modM &lt;- data.frame(modM, predict(mod1, newdata=modM, interval = &quot;prediction&quot;))
-
-p2 &lt;- ggplot(NULL, aes(x, y)) +
-    geom_point(data = modDat, mapping = aes(Temp, MAGT_Permafrost_cci, col = cold), alpha = 0.1, shape = 16) +
-    scale_color_manual(name = &quot;in situ MAGT&quot;, labels=c(&quot;&lt; 1˚C&quot;, &quot;&gt;= 1˚C&quot;), values = c(&quot;1&quot; = &quot;navy&quot;, &quot;2&quot; = &quot;magenta4&quot;)) +
-    theme_bw() + 
-    geom_abline(slope = 1, intercept = 0, linetype = &quot;dashed&quot;) +
-    xlim(-15, 10) + ylim(-15, 10) +
-    geom_ribbon(data = modM %&gt;% filter(cold==1 &amp; Temp&gt;min(modDat$Temp[modDat$cold==1]) &amp; Temp&lt;max(modDat$Temp[modDat$cold==1])), mapping = aes(x = Temp, y = fit, ymin = lwr, ymax = upr), alpha = 0.15) +
-    geom_line(  data = modM %&gt;% filter(cold==1 &amp; Temp&gt;min(modDat$Temp[modDat$cold==1]) &amp; Temp&lt;max(modDat$Temp[modDat$cold==1])), mapping = aes(x = Temp, y = fit), 
-              col = &quot;navy&quot;, size = 1.5) +
-    geom_ribbon(data = modM %&gt;% filter(cold==2 &amp; Temp&gt;min(modDat$Temp[modDat$cold==2]) &amp; Temp&lt;max(modDat$Temp[modDat$cold==2])), mapping = aes(x = Temp, y = fit, ymin = lwr, ymax = upr), alpha = 0.15) +
-    geom_line(  data = modM %&gt;% filter(cold==2 &amp; Temp&gt;min(modDat$Temp[modDat$cold==2]) &amp; Temp&lt;max(modDat$Temp[modDat$cold==2])), mapping = aes(x = Temp, y = fit), 
-              col = &quot;magenta4&quot;, size = 1.5) +
-    labs(y = &quot;&quot;, x = &quot;&quot;) +
-    theme(text = element_text(size=rel(4.5)),
-          legend.text = element_text(size=rel(3.5)),
-          legend.position = c(0.75, 0.15),
-          legend.background = element_rect(fill = &quot;white&quot;, color = &quot;black&quot;)) +
-    guides(colour = guide_legend(override.aes = list(alpha = 1, size = 3)))
-
-gridExtra::grid.arrange(p1, p2, nrow = 1, left = &quot;MAGT [˚C] Permafrost_cci&quot;, bottom = &quot;MAGT [˚C] in situ data&quot;)</code></pre>
-<pre><code>## Warning: Removed 15266 rows containing missing values (geom_point).</code></pre>
-<pre><code>## Warning: Removed 1 row(s) containing missing values (geom_path).</code></pre>
-<pre><code>## Warning: Removed 15266 rows containing missing values (geom_point).</code></pre>
-<p><img src="Results_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<div id="in-situ-magt-vs-permafrost_cci-magt" class="section level2">
+<h2>In situ MAGT vs Permafrost_cci MAGT</h2>
+<details>
+<summary>
+Figure 3.1 code
+</summary>
+<pre class="r"><code>    mod   &lt;- lm(MAGT_Permafrost_cci~Temp, data = inSitu_temp)
+    modM  &lt;- data.frame(Temp=seq(min(inSitu_temp$Temp), max(inSitu_temp$Temp), length = 50))
+    modM  &lt;- data.frame(modM, predict(mod, newdata=modM, interval = &quot;prediction&quot;))
+    
+    png(&quot;figures/Figure_3.1.png&quot;, width = 20, height = 10, units = &quot;cm&quot;, res = 250)
+    ggplot(NULL, aes(x, y)) +
+        geom_label(aes(-15, 6.5, hjust = 0, vjust = 0,
+                       label = paste0(&quot;Slope =&quot;,signif(mod$coef[[2]], 3), &quot;\n&quot;, &quot;R^2 = &quot;, signif(summary(mod)$adj.r.squared, 3))), size = 5) +
+        geom_point(data = inSitu_temp, mapping = aes(Temp, MAGT_Permafrost_cci), 
+                   alpha = 0.1, shape = 16, fill = &quot;grey40&quot;) +
+        theme_bw() + 
+        geom_abline(slope = 1, intercept = 0, linetype = &quot;dashed&quot;) +
+        # geom_ribbon(data = modM, mapping = aes(x = Temp, y = fit, ymin = lwr, ymax = upr), alpha = 0.15) +
+        geom_line(  data = modM, mapping = aes(x = Temp, y = fit), col = &quot;cornflowerblue&quot;, size = 1.5) +
+        labs(y = &quot;MAGT [˚C] Permafrost_cci&quot;, x = &quot;MAGT [˚C] in situ data&quot;) +
+        xlim(-15, 10) + ylim(-15, 10) +
+        theme(text = element_text(size=rel(3.5)))</code></pre>
+<pre><code>  ## Warning: Removed 15266 rows containing missing values (geom_point).</code></pre>
+<pre><code>  ## Warning: Removed 1 row(s) containing missing values (geom_path).</code></pre>
+<pre class="r"><code>    dev.off()</code></pre>
+<pre><code>  ## quartz_off_screen 
+  ##                 2</code></pre>
+</details>
+<p><img src="figures/Figure_3.1.png" /></p>
+</div>
+<div id="residuals" class="section level2">
+<h2>Residuals</h2>
+<div id="residuals-over-magt" class="section level3">
+<h3>Residuals over MAGT</h3>
+<details>
+<summary>
+Figure 3.2 code
+</summary>
+<pre class="r"><code>  ###################
+  #### Residuals ####
+  ###################
+  predInterval &lt;- function(x, newdat, lower = .025, upper = 0.975) {
+    
+      model  = x
+    
+      p          &lt;- predict(model, newdat, type = &quot;link&quot;, se.fit = TRUE)
+      upr        &lt;- p$fit + (2 * p$se.fit)
+      lwr        &lt;- p$fit - (2 * p$se.fit)
+      newdat$upr &lt;- model$family$linkinv(upr)
+      newdat$lwr &lt;- model$family$linkinv(lwr)
+      newdat$fit &lt;- predict(model, newdat)
+      
+      beta      &lt;- coef(model)
+      V         &lt;- vcov(model)
+      num_beta_vecs &lt;- 10000
+      Cv            &lt;- chol(V)
+      nus         &lt;- rnorm(num_beta_vecs * length(beta))
+      beta_sims   &lt;- beta + t(Cv) %*% matrix(nus, nrow = length(beta), ncol = num_beta_vecs)
+      covar_sim   &lt;- predict(model, newdata = newdat, type = &quot;lpmatrix&quot;)
+      linpred_sim &lt;- covar_sim %*% beta_sims
+      invlink     &lt;- function(x) x
+      exp_val_sim &lt;- invlink(linpred_sim)
+      y_sim       &lt;- matrix(rnorm(n = prod(dim(exp_val_sim)), mean = exp_val_sim, sd = summary(model)$scale), 
+                      nrow = nrow(exp_val_sim), 
+                      ncol = ncol(exp_val_sim))
+      
+      out &lt;- as.data.frame(t(apply(y_sim, 1, quantile, prob = c(lower, upper))))
+        names(out)[1:2] &lt;- c(&quot;plwr&quot;, &quot;pupr&quot;)
+        
+      cbind(newdat, out)
+  }
+  
+  
+  
+  resTab &lt;- inSitu_temp %&gt;% filter(!is.na(Temp) &amp; !is.na(MAGT_Permafrost_cci)) %&gt;%
+                       mutate(res =  as.numeric(resid(lm(MAGT_Permafrost_cci-Temp ~ 0))))
+  
+  #### over Temps
+  model   &lt;- gam(res ~ s(Temp), data = resTab)
+    
+  newdat  &lt;- data.frame(Temp = seq(min(resTab$Temp), max(resTab$Temp), length = 100))
+  dat     &lt;- lapply(list(model), predInterval, newdat = newdat)
+  
+  ## Outliers
+  
+  pl1 &lt;- ggplot(NULL, aes(x, y)) +
+    theme_bw() +
+    geom_abline(slope = 0, intercept = 0, linetype = &quot;dashed&quot;) +
+    geom_point(data = resTab, mapping = aes(Temp, res, col = coldSite), alpha = 0.1, shape = 16, size = 1.5) +
+    geom_point(data = resTab %&gt;% filter(res&lt;quantile(res, probs = 0.025) | res&gt;quantile(res, probs = 0.975)), 
+    mapping = aes(Temp, res, col = coldSite), alpha = 0.8, shape = 4, size = 1) +
+      scale_color_manual(values = c(&quot;firebrick&quot;, &quot;cornflowerblue&quot;), labels = c(&#39;MAGT [°C] &gt;= 1&#39;, &#39;MAGT [°C] &lt; 1&#39;)) +
+    
+    geom_ribbon(data = dat[[1]], mapping = aes(x = Temp, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = &quot;grey10&quot;) +
+    geom_line(data   = dat[[1]], mapping = aes(x = Temp, y = fit), col = &quot;grey10&quot;, size = 1) +
+    
+    labs(y = &quot;Residuals&quot;, x = &quot;MAGT [˚C] in situ data&quot;, col = &quot;In situ match-up sites&quot;) +
+    
+    guides(colour = guide_legend(override.aes = list(alpha = 1))) +
+    
+    theme(axis.title = element_text(size=rel(1.1)),
+          axis.text = element_text(size=rel(1)),
+          legend.position = c(0.28, 0.14),
+          legend.background = element_rect(fill = &quot;white&quot;, color = &quot;black&quot;),
+          legend.text = element_text(size=rel(0.8)),
+          legend.title = element_text(size=rel(0.8)))
+  
+  resMap &lt;- resTab %&gt;% filter(res&lt;quantile(res, probs = 0.025) | res&gt;quantile(res, probs = 0.975)) %&gt;% group_by(Name) %&gt;% mutate(N = n()) %&gt;%
+    filter(!duplicated(Name))
+  
+  
+  crds_pts &lt;- st_as_sf(resMap, coords = c(&quot;Longitude&quot;, &quot;Latitude&quot;)) %&gt;% st_set_crs(4326) %&gt;%
+    st_transform(&quot;+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs&quot;) %&gt;% st_coordinates()
+  
+  pl2 &lt;- map +
+    geom_raster(data=rast_df, aes(x=x, y=y, fill=value), alpha=0.8, show.legend = FALSE) + 
+      scale_fill_gradient(low=&quot;slategray2&quot;, high=&quot;black&quot;) +
+      labs(fill = &quot;Permafrost_cci PFR (2018)&quot;) +
+      ggnewscale::new_scale_fill() +
+      geom_jitter(data = data.frame(crds_pts, coldSite = resMap$coldSite, n = resMap$N), 
+                 aes(x = X, y = Y, col = coldSite, size = n), alpha = 0.8, shape = 4, stroke = 1, width = 60000, height = 60000) +
+      scale_color_manual(values = c(&quot;firebrick&quot;, &quot;cornflowerblue&quot;), labels = c(&#39;MAGT [°C] &gt;= 1&#39;, &#39;MAGT [°C] &lt; 1&#39;)) +
+      scale_size(range = c(0.15, 1.7)) +
+      labs(x = &quot;&quot;, y = &quot;&quot;, col = &quot;&quot;, size = &quot;Nr. measurements&quot;) +
+      theme(legend.position=&quot;bottom&quot;, legend.box=&quot;vertical&quot;, legend.margin=margin(),
+            legend.background = element_rect(fill = &quot;white&quot;),
+            legend.text = element_text(size=rel(0.8)),
+            legend.title = element_text(size=rel(0.8)))
+  
+  
+  png(&quot;figures/Figure_3.2.png&quot;, width = 20, height = 10, units = &quot;cm&quot;, res = 250)
+  gridExtra::grid.arrange(pl1, pl2, nrow =1, widths = c(1,1.2))</code></pre>
+<pre><code>  ## Warning: Raster pixels are placed at uneven horizontal intervals and will be
+  ## shifted. Consider using geom_tile() instead.</code></pre>
+<pre><code>  ## Warning: Raster pixels are placed at uneven vertical intervals and will be
+  ## shifted. Consider using geom_tile() instead.</code></pre>
+<pre><code>  ## Warning: Removed 719 rows containing missing values (geom_raster).</code></pre>
+<pre class="r"><code>  dev.off()</code></pre>
+<pre><code>  ## quartz_off_screen 
+  ##                 2</code></pre>
+</details>
+<p><br/></p>
+<p><img src="figures/Figure_3.2.png" /></p>
+</div>
+<div id="residuals-over-depth" class="section level3">
+<h3>Residuals over Depth</h3>
+<details>
+<summary>
+Figure 3.3 code
+</summary>
+</details>
+<p><br/></p>
+<p><img src="figures/Figure_3.3.png" /></p>
+</div>
+</div>
 
 
 

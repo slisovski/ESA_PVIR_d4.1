@@ -53,3 +53,24 @@ editor_options:
   load("data/temp/rast_df.rda")
 ```
 
+<details>
+  <summary>Figure 4.3 code</summary>
+  ```{r}
+  subDat <- inSitu_alt %>% mutate(ALT_Permafrost_cci = ALT_Permafrost_cci*100,
+                                  delta = Depth - ALT_Permafrost_cci) %>% filter(Depth < 500)
+  
+    png("figures/Figure_4.3.png", width = 20, height = 15, units = "cm", res = 250)
+    ggplot(NULL, aes(x)) +
+      geom_histogram(data = subDat, mapping = aes(x = delta), binwidth=10, position="dodge", fill = "maroon4", col = "black")  +
+      geom_label(aes(x = 300, y = 350), size = 5,
+        label = paste("Mean: ", round(mean(subDat$delta), 1), "\nMedian: ", round(median(subDat$delta), 1), "\nSD: ", round(sd(subDat$delta), 1))) +
+      theme_bw() +
+      labs(fill='', x = "ALT [cm]", y = "Percentage") +
+      theme(text = element_text(size=rel(4)),
+            legend.text = element_text(size=14))
+    dev.off()  
+  ```
+</details><br/> 
+
+![](figures/Figure_4.3.png)
+_Figure 4.3: Frequency distribution of residuals from the ALT in situ and Permafrost_cci matchup._

@@ -292,6 +292,29 @@ R Library
   sf::sf_use_s2(FALSE)</code></pre>
 </details>
 <p><br/></p>
+<details>
+<summary>
+Figure 4.3 code
+</summary>
+<pre class="r"><code>  subDat &lt;- inSitu_alt %&gt;% mutate(ALT_Permafrost_cci = ALT_Permafrost_cci*100,
+                                  delta = Depth - ALT_Permafrost_cci) %&gt;% filter(Depth &lt; 500)
+  
+    png(&quot;figures/Figure_4.3.png&quot;, width = 20, height = 15, units = &quot;cm&quot;, res = 250)
+    ggplot(NULL, aes(x)) +
+      geom_histogram(data = subDat, mapping = aes(x = delta), binwidth=10, position=&quot;dodge&quot;, fill = &quot;maroon4&quot;, col = &quot;black&quot;)  +
+      geom_label(aes(x = 300, y = 350), size = 5,
+        label = paste(&quot;Mean: &quot;, round(mean(subDat$delta), 1), &quot;\nMedian: &quot;, round(median(subDat$delta), 1), &quot;\nSD: &quot;, round(sd(subDat$delta), 1))) +
+      theme_bw() +
+      labs(fill=&#39;&#39;, x = &quot;ALT [cm]&quot;, y = &quot;Percentage&quot;) +
+      theme(text = element_text(size=rel(4)),
+            legend.text = element_text(size=14))</code></pre>
+<pre><code>  ## Warning: Removed 73 rows containing non-finite values (stat_bin).</code></pre>
+<pre class="r"><code>    dev.off()  </code></pre>
+<pre><code>  ## quartz_off_screen 
+  ##                 2</code></pre>
+</details>
+<p><br/></p>
+<p><img src="figures/Figure_4.3.png" /> <em>Figure 4.3: Frequency distribution of residuals from the ALT in situ and Permafrost_cci matchup.</em></p>
 
 
 

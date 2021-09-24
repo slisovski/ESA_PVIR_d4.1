@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>Methods for quality assessment: ALT</title>
+
+<script src="site_libs/header-attrs-2.11/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">ESA_PVIR_d4.1</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="Methods_MAGT.html">Methods: MAGT</a>
+</li>
+<li>
+  <a href="Results_MAGT.html">Results: MAGT</a>
+</li>
+<li>
+  <a href="Methods_ALT.html">Methods: ALT</a>
+</li>
+<li>
+  <a href="Results_ALT.html">Results: ALT</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">Methods for quality assessment: ALT</h1>
+
+</div>
+
+
+<style type="text/css">
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+<details>
+<summary>
+R Library
+</summary>
+<pre class="r"><code>  library(readxl)
+  library(ncdf4)
+  library(raster)
+  library(tidyverse)
+  library(ggforce)
+  library(grid)
+  library(sf)
+  sf::sf_use_s2(FALSE)</code></pre>
+</details>
+<p><br/></p>
+<p>The in situ dataset:</p>
+<details>
+<summary>
+Dataset compilation
+</summary>
+<pre class="r"><code>    inSitu_alt &lt;- read.csv(&quot;data/ALT_inSitu_v3_2020.csv&quot;, sep = &quot;;&quot;, dec = &quot;,&quot;) %&gt;%
+    select(-ALT_Permafrost_cci, -starts_with(&quot;X&quot;)) %&gt;% mutate(ALT_Permafrost_cci = NA) %&gt;% rename(Year = year) %&gt;%
+    filter(!is.na(Latitude), !is.na(Longitude))</code></pre>
+</details>
+<details>
+<summary>
+Figure 4.1 code
+</summary>
+<pre class="r"><code>  ## base map
+    mp &lt;-  st_read(&quot;~/Google Drive/GeoDat/NaturalEarth/50m_physical/ne_50m_land/ne_50m_land.shp&quot;, quiet = TRUE) %&gt;% 
+    st_set_crs(4326) %&gt;% st_buffer(0) %&gt;% st_union() %&gt;%
+    st_sym_difference(st_read(&quot;~/Google Drive/GeoDat/NaturalEarth/110m_physical/ne_110m_lakes/ne_110m_lakes.shp&quot;, quiet = TRUE) %&gt;% 
+    st_set_crs(4326) %&gt;% st_union()) %&gt;%
+    st_transform(&quot;+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs&quot;) %&gt;%
+    st_crop(st_bbox(c(xmin = -5.5e6, ymin = -4e6, xmax = 8e6, ymax = 4e6)))
+  
+  map &lt;- ggplot() +
+    geom_sf(data = mp, colour = NA, fill = &quot;slategray2&quot;) +
+    theme_bw() +
+    xlim(-5e6, 7.5e6) + ylim(-3.8e6, 3.8e6)
+    
+  # rast &lt;- raster(&quot;~/Documents/ESAproject/SimulationData/PermafrostExtent/ESACCI-PERMAFROST-L4-PFR-MODISLST_CRYOGRID-AREA4_PP-2018-fv03.0.nc&quot;)
+  # rast_spdf &lt;- as(aggregate(rast, 15), &quot;SpatialPixelsDataFrame&quot;)
+  # rast_df   &lt;- as.data.frame(rast_spdf)
+  # colnames(rast_df) &lt;- c(&quot;value&quot;, &quot;x&quot;, &quot;y&quot;)
+  # save(rast_df, file = &quot;Rmarkdown/temp/rast_df.rda&quot;)
+  load(&quot;data/temp/rast_df.rda&quot;)
+  
+  mapDat &lt;- inSitu_alt %&gt;% filter(!duplicated(Name))
+  
+  crds_pts &lt;- st_as_sf(mapDat, coords = c(&quot;Longitude&quot;, &quot;Latitude&quot;)) %&gt;% st_set_crs(4326) %&gt;%
+  st_transform(&quot;+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs&quot;) %&gt;% st_coordinates()
+  
+  png(&quot;figures/Figure_4.1.png&quot;, width = 20, height = 10, units = &quot;cm&quot;, res = 250)
+  map +
+    geom_raster(data=rast_df, aes(x=x, y=y, fill=value), alpha=0.8, size=0) + 
+    scale_fill_gradient(low=&quot;slategray2&quot;, high=&quot;black&quot;) +
+    labs(fill = &quot;Permafrost_cci PFR (2018)&quot;) +
+    ggnewscale::new_scale_fill() +
+    geom_point(data = data.frame(crds_pts), 
+               aes(x = X, y = Y), 
+               color = &quot;black&quot;, fill = &quot;yellow2&quot;, size = 2.5, alpha = 1, stroke = 1, shape = 21) +
+    labs(x = &quot;&quot;, y = &quot;&quot;)
+  dev.off()</code></pre>
+</details>
+<p><img src="figures/Figure_4.1.png" /> <em>Figure 4.1. Northern hemisphere Permafrost_cci PFR permafrost probability and in situ active layer thickness measurements.</em></p>
+<details>
+<summary>
+Match-up code
+</summary>
+<pre class="r"><code>  path    &lt;- &quot;/Users/slisovski/Documents/ESAproject/SimulationData/ActiveLayerThickness/&quot;
+  altFls  &lt;- data.frame(fl = list.files(path))
+  altFls$year &lt;- as.numeric(sapply(strsplit(altFls$fl, &quot;-&quot;), function(x) x[7]))
+  
+  for(y in unique(inSitu_alt$Year)) {
+  
+    cat(sprintf(&#39;\r%d&#39;, y))
+  
+    indTab &lt;- which(inSitu_alt$Year==y)
+    subTab &lt;- st_as_sf(inSitu_alt[indTab,], coords = c(&quot;Longitude&quot;, &quot;Latitude&quot;), crs = 4326)
+  
+    st &lt;- raster(glue::glue(&quot;{path}{altFls$fl[altFls$year==y]}&quot;))
+  
+    extrM &lt;- raster::extract(st, subTab %&gt;% st_transform(proj4string(st)) %&gt;%
+                     st_coordinates())
+  
+    inSitu_alt$ALT_Permafrost_cci[indTab] &lt;- extrM
+  }
+  save(inSitu_alt, file = &quot;data/inSitu_alt.rda&quot;)</code></pre>
+</details>
+<p><br/></p>
+<div id="characteristics-of-alt-match-up-data-set" class="section level3">
+<h3>Characteristics of ALT match-up data set</h3>
+</div>
+<div id="assessments-of-permafrost-extent" class="section level2">
+<h2>Assessments of Permafrost Extent</h2>
+<div id="in-situ-pe-reference-data-generation" class="section level3">
+<h3>In Situ PE Reference Data Generation</h3>
+<p><em>Match-up Version 1 synthesised binary Permafrost Extent PFR (CRDPv0 2019)</em></p>
+<p>Match-up data set in phase 1, Version 1: - Permafrost_cci CryoGrid-3 Permafrost fraction PFR per site and year given in 0, 20, 40, 60, 80 or 100% - A binary PFR data set from 2003 to 2017 was compiled from Version 1 synthesised mean annual GTD - discrete depths. - Criteria permafrost abundance yes / no - One data set with Yes all measurements in depths (0 – 2m) MAGT ≤0.5 °C</p>
+<p><em>Match-up Version 2 synthesised binary Permafrost Extent PFR (CRDPv1 2020)</em></p>
+<p>Match-up data set in phase 2, Version 2: - Permafrost_cci CryoGrid 3 Permafrost fraction PFR per site and year is given in 0, 14, 29, 43, 57, 71 or 100% - A binary PFR data set from 1997 to 2018 is compiled from Version 2 synthesised mean annual GTD - discrete depths and Version 2 synthesised annual CALM ALT and active layer depth measurements from Russian expeditions (Bartsch, oral communication, 2020) - Criteria permafrost abundance yes / no - One data set with Yes if any measurements in depths (0 – 2.4 m) MAGT ≤0.5 °C and Yes to all ALT and ALD measurements &lt;300 cm - Accuracy = (TP+TN)/(TP+TN+FP+FN), where: TP = True positive; FP = False positive; TN = True negative; FN = False negative - The formula for quantifying binary precision is: Precision = (TP) / (TP+FP)</p>
+<p><em>Match-up Version 2 synthesised binary Permafrost Extent PFR (CRDPv2 2021)</em></p>
+<p>Match-up data set in phase 3, Version 3:</p>
+<p>…</p>
+<details>
+<summary>
+Figure 4.2 code
+</summary>
+<pre class="r"><code>  subDat &lt;- inSitu_alt %&gt;% mutate(ALT_Permafrost_cci = ALT_Permafrost_cci*100) %&gt;%
+    pivot_longer(col = c(&quot;Depth&quot;, &quot;ALT_Permafrost_cci&quot;)) %&gt;%
+    mutate(name = if_else(name==&quot;Depth&quot;, &quot;in situ&quot;, &quot;permafrost_cci&quot;))
+    
+  png(&quot;figures/Figure_4.2.png&quot;, width = 22, height = 6, units = &quot;cm&quot;, res = 250)
+  ggplot(subDat, aes(x = value, fill= name)) +
+    geom_histogram(binwidth=20, position=&quot;dodge&quot;, aes(y=(..count../sum(..count..))*100)) +
+    scale_fill_manual(values = c(&quot;cornflowerblue&quot;, &quot;maroon4&quot;)) +
+    theme_bw() +
+    xlim(0, 500) +
+    labs(fill=&#39;&#39;, x = &quot;ALT [cm]&quot;, y = &quot;Percentage&quot;) +
+    theme(text = element_text(size=rel(4)),
+          legend.text = element_text(size=14))
+  dev.off()  </code></pre>
+<pre><code>  ## quartz_off_screen 
+  ##                 2</code></pre>
+</details>
+<p><br/></p>
+<p><img src="figures/Figure_4.2.png" /> <em>Figure 4.2: Frequency distribution of Permafrost_cci ALT and in situ ALT from GTN-P CALM.</em></p>
+</div>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

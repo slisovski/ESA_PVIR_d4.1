@@ -3,10 +3,14 @@ output_dir: "docs"
 navbar:
   title: "ESA_PVIR_d4.1"
   left:
-    - text: "Methods"
-      href: Methods.html
+    - text: "Methods: MAGT"
+      href: Methods_MAGT.html
     - text: "Results: MAGT"
-      href: Results.html
+      href: Results_MAGT.html
+    - text: "Methods: ALT"
+      href: Methods_ALT.html
+    - text: "Results: ALT"
+      href: Results_ALT.html
 output:
   html_document:
     theme: cosmo

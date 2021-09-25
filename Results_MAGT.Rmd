@@ -126,8 +126,6 @@ editor_options:
       cbind(newdat, out)
   }
   
-
-  
   resTab <- inSitu_temp %>% filter(!is.na(Temp) & !is.na(MAGT_Permafrost_cci)) %>%
                        mutate(res =  as.numeric(resid(lm(MAGT_Permafrost_cci-Temp ~ 0))))
   

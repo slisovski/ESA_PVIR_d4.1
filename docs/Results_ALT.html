@@ -296,25 +296,198 @@ R Library
 <summary>
 Figure 4.3 code
 </summary>
-<pre class="r"><code>  subDat &lt;- inSitu_alt %&gt;% mutate(ALT_Permafrost_cci = ALT_Permafrost_cci*100,
-                                  delta = Depth - ALT_Permafrost_cci) %&gt;% filter(Depth &lt; 500)
+<pre class="r"><code>  subDat &lt;- inSitu_alt %&gt;% as_tibble() %&gt;%mutate(ALT_Permafrost_cci = ALT_Permafrost_cci*100,
+                                  delta = Depth - ALT_Permafrost_cci)
   
     png(&quot;figures/Figure_4.3.png&quot;, width = 20, height = 15, units = &quot;cm&quot;, res = 250)
     ggplot(NULL, aes(x)) +
-      geom_histogram(data = subDat, mapping = aes(x = delta), binwidth=10, position=&quot;dodge&quot;, fill = &quot;maroon4&quot;, col = &quot;black&quot;)  +
-      geom_label(aes(x = 300, y = 350), size = 5,
-        label = paste(&quot;Mean: &quot;, round(mean(subDat$delta), 1), &quot;\nMedian: &quot;, round(median(subDat$delta), 1), &quot;\nSD: &quot;, round(sd(subDat$delta), 1))) +
+      geom_histogram(data = subDat, mapping = aes(x = delta), binwidth=5, position=&quot;dodge&quot;, fill = &quot;maroon4&quot;, col = &quot;black&quot;)  +
+      geom_label(aes(x = 160, y = 180), size = 5,
+        label = paste(&quot;Summary statistics in [cm]&quot;, &quot;\nMean: &quot;, round(mean(subDat$delta, na.rm = T), 1), 
+        &quot;\nMedian: &quot;, round(median(subDat$delta, na.rm = T), 1), &quot;\nSD: &quot;, round(sd(subDat$delta, na.rm = T), 1)),
+        hjust = 0) +
       theme_bw() +
+      xlim(-250, 500) +
+      ylim(0, 220) +
       labs(fill=&#39;&#39;, x = &quot;ALT [cm]&quot;, y = &quot;Percentage&quot;) +
       theme(text = element_text(size=rel(4)),
             legend.text = element_text(size=14))</code></pre>
-<pre><code>  ## Warning: Removed 73 rows containing non-finite values (stat_bin).</code></pre>
+<pre><code>  ## Warning: Removed 9 rows containing non-finite values (stat_bin).</code></pre>
+<pre><code>  ## Warning: Removed 2 rows containing missing values (geom_bar).</code></pre>
 <pre class="r"><code>    dev.off()  </code></pre>
 <pre><code>  ## quartz_off_screen 
   ##                 2</code></pre>
 </details>
 <p><br/></p>
 <p><img src="figures/Figure_4.3.png" /> <em>Figure 4.3: Frequency distribution of residuals from the ALT in situ and Permafrost_cci matchup.</em></p>
+<details>
+<summary>
+Figure 4.4 code
+</summary>
+<pre class="r"><code>  ###################
+  #### Residuals ####
+  ###################
+  predInterval &lt;- function(x, newdat, lower = .025, upper = 0.975) {
+      
+        model  = x
+      
+        p          &lt;- predict(model, newdat, type = &quot;link&quot;, se.fit = TRUE)
+        upr        &lt;- p$fit + (2 * p$se.fit)
+        lwr        &lt;- p$fit - (2 * p$se.fit)
+        newdat$upr &lt;- model$family$linkinv(upr)
+        newdat$lwr &lt;- model$family$linkinv(lwr)
+        newdat$fit &lt;- predict(model, newdat)
+        
+        beta      &lt;- coef(model)
+        V         &lt;- vcov(model)
+        num_beta_vecs &lt;- 10000
+        Cv            &lt;- chol(V)
+        nus         &lt;- rnorm(num_beta_vecs * length(beta))
+        beta_sims   &lt;- beta + t(Cv) %*% matrix(nus, nrow = length(beta), ncol = num_beta_vecs)
+        covar_sim   &lt;- predict(model, newdata = newdat, type = &quot;lpmatrix&quot;)
+        linpred_sim &lt;- covar_sim %*% beta_sims
+        invlink     &lt;- function(x) x
+        exp_val_sim &lt;- invlink(linpred_sim)
+        y_sim       &lt;- matrix(rnorm(n = prod(dim(exp_val_sim)), mean = exp_val_sim, sd = summary(model)$scale), 
+                        nrow = nrow(exp_val_sim), 
+                        ncol = ncol(exp_val_sim))
+        
+        out &lt;- as.data.frame(t(apply(y_sim, 1, quantile, prob = c(lower, upper))))
+          names(out)[1:2] &lt;- c(&quot;plwr&quot;, &quot;pupr&quot;)
+          
+        cbind(newdat, out)
+    }
+  
+  model   &lt;- gam(delta ~ s(Depth), data = subDat)
+      
+  newdat  &lt;- data.frame(Depth = seq(0, 1500, length = 200))
+  dat     &lt;- lapply(list(model), predInterval, newdat = newdat)
+    
+  
+  pl1 &lt;- ggplot(NULL, aes(x, y)) +
+    geom_point(subDat, mapping = aes(x = Depth, y = delta), alpha = 0.5, shape = 16, col  = &quot;maroon4&quot;, size = 2) + 
+    geom_abline(slope = 0, intercept = 0, linetype = &quot;dashed&quot;) +
+    geom_ribbon(data = dat[[1]], mapping = aes(x = Depth, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = &quot;grey10&quot;) +
+    geom_line(data   = dat[[1]], mapping = aes(x = Depth, y = fit), col = &quot;grey10&quot;, size = 1) +
+    theme_bw() +
+    labs(x = &quot;&quot;, y = &quot;&quot;) +
+    theme(text = element_text(size=rel(4)))
+  
+  p &lt;- c(0.025, 0.5, 0.975)
+  p_names &lt;- map_chr(p, ~paste0(.x*100, &quot;%&quot;))
+  p_funs &lt;- map(p, ~partial(quantile, probs = .x, na.rm = TRUE))
+  
+  boxDat &lt;- subDat %&gt;% filter(Depth &lt;= 500) %&gt;%
+    mutate(groupD = cut(Depth, seq(0, 500, 100), labels = FALSE)) %&gt;%
+    group_by(groupD) %&gt;% summarize_at(vars(delta), funs(!!!p_funs))</code></pre>
+<pre><code>  ## Warning: `funs()` was deprecated in dplyr 0.8.0.
+  ## Please use a list of either functions or lambdas: 
+  ## 
+  ##   # Simple named list: 
+  ##   list(mean = mean, median = median)
+  ## 
+  ##   # Auto named with `tibble::lst()`: 
+  ##   tibble::lst(mean, median)
+  ## 
+  ##   # Using lambdas
+  ##   list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))</code></pre>
+<pre class="r"><code>  names(boxDat) &lt;- c(&quot;groupD&quot;, &quot;lower&quot;, &quot;median&quot;, &quot;upper&quot;)
+  
+  
+  pl2 &lt;- ggplot(NULL, aes(x, y)) +
+    geom_point(subDat, mapping = aes(x = Depth, y = delta), alpha = 0.5, shape = 16, col  = &quot;maroon4&quot;, size = 2) + 
+    geom_abline(slope = 0, intercept = 0, linetype = &quot;dashed&quot;) +
+    geom_ribbon(data = dat[[1]], mapping = aes(x = Depth, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = &quot;grey10&quot;) +
+    geom_line(data   = dat[[1]], mapping = aes(x = Depth, y = fit), col = &quot;grey10&quot;, size = 1) +
+    geom_segment(boxDat, mapping = aes(x = ((groupD -1) * 100) + 50, xend = ((groupD -1) * 100) + 50, y = lower, yend = upper), size = 1.2) +
+    geom_point(boxDat,  mapping = aes(x = ((groupD -1) * 100) + 50, y = median), size = 4, shape = 16) +
+    geom_label(boxDat, mapping = aes(x = ((groupD -1) * 100) + 50, y = median + 190, 
+      label = paste(&quot;2.5%: &quot;, upper, &quot;\nMedian: &quot;, median, &quot;\n97.5%: &quot;, lower)), size = 2) +
+    theme_bw() +
+    xlim(0,500) + ylim(-250, 550) +
+    labs(x = &quot;&quot;, y = &quot;&quot;) +
+    theme(text = element_text(size=rel(4)))
+  
+  
+  png(&quot;figures/Figure_4.4.png&quot;, width = 20, height = 10, units = &quot;cm&quot;, res = 250)
+  gridExtra::grid.arrange(pl1, pl2, nrow =1, widths = c(1,1.5), bottom = &quot;in situ ALT [cm]&quot;, left = &quot;Residuals in situ and Permafrost_cci ALT [cm]&quot;)</code></pre>
+<pre><code>  ## Warning: Removed 17 rows containing missing values (geom_point).</code></pre>
+<pre><code>  ## Warning: Removed 133 row(s) containing missing values (geom_path).</code></pre>
+<pre class="r"><code>  dev.off()</code></pre>
+<pre><code>  ## quartz_off_screen 
+  ##                 2</code></pre>
+</details>
+<p><br/></p>
+<p><img src="figures/Figure_4.4.png" /> <em>Figure 4.4: Residuals of in situ ALT measurements and Permafrost_cci ALT simulations over ALT.</em></p>
+<details>
+<summary>
+Figure 4.5 code
+</summary>
+<pre class="r"><code>  maxTab &lt;- subDat %&gt;% group_by(Name) %&gt;% mutate(maxRes = max(abs(delta)/100, na.rm = T)) %&gt;%
+    filter(!duplicated(Name)) %&gt;% arrange((maxRes))
+  
+  crds_pts &lt;- st_as_sf(maxTab, coords = c(&quot;Longitude&quot;, &quot;Latitude&quot;)) %&gt;% st_set_crs(4326) %&gt;%
+      st_transform(&quot;+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs&quot;) %&gt;% st_coordinates()
+    
+  
+  pl1 &lt;-map +
+    geom_raster(data=rast_df, aes(x=x, y=y, fill=value), alpha=0.8) + 
+      viridis::scale_fill_viridis(option = &quot;H&quot;) +
+    labs(fill = &quot;Permafrost_cci ALT [m] (median 1997-2019)&quot;) +
+    ggnewscale::new_scale_fill() +
+    geom_point(data = data.frame(crds_pts, maxRes = maxTab$maxRes), 
+                   aes(x = X, y = Y, fill = maxRes), alpha = 1, shape = 21, stroke = 0.2, size = 3.5) +
+    scale_fill_viridis_c() +
+    labs(fill = &quot;Residuals [cm]&quot;, x = &quot;&quot;, y = &quot;&quot;) +
+    theme(legend.background = element_rect(fill = &quot;white&quot;),
+          legend.text = element_text(size=rel(0.8)),
+          legend.title = element_text(size=rel(0.8))) +
+    guides(fill=guide_legend(ncol=2))
+  
+  
+  model   &lt;- gam(delta ~ s(Latitude), data = subDat)
+  newdat  &lt;- data.frame(Latitude = seq(31, 82, length = 200))
+  dat     &lt;- lapply(list(model), predInterval, newdat = newdat)
+  
+  
+  grL    &lt;- data.frame(gr = 1:11, groupL = seq(31, 82, length = 11))
+  boxDat &lt;- subDat %&gt;% mutate(gr = cut(Latitude, grL$groupL, labels = FALSE)) %&gt;%
+      group_by(gr) %&gt;% summarize_at(vars(delta), funs(!!!p_funs)) %&gt;% left_join(grL) %&gt;%
+      mutate(grL = groupL + median(diff(grL$groupL)))</code></pre>
+<pre><code>  ## Joining, by = &quot;gr&quot;</code></pre>
+<pre class="r"><code>  names(boxDat) &lt;- c(&quot;groupD&quot;, &quot;lower&quot;, &quot;median&quot;, &quot;upper&quot;, &quot;a&quot;, &quot;groupL&quot;)
+  
+      
+  pl2 &lt;- ggplot(NULL, aes(x, y)) +
+      geom_point(subDat, mapping = aes(x = Latitude, y = delta), alpha = 0.5, shape = 16, col  = &quot;maroon4&quot;, size = 2) + 
+      geom_abline(slope = 0, intercept = 0, linetype = &quot;dashed&quot;) +
+      geom_ribbon(data = dat[[1]], mapping = aes(x = Latitude, y = fit, ymin = lwr, ymax = upr), alpha = 0.15, fill = &quot;grey10&quot;) +
+      geom_line(data   = dat[[1]], mapping = aes(x = Latitude, y = fit), col = &quot;grey10&quot;, size = 1) +
+    
+      geom_segment(boxDat, mapping = aes(x = groupL, xend = groupL, y = lower, yend = upper), size = 1.2) +
+      geom_point(boxDat,   mapping = aes(x = groupL, y = median), size = 4, shape = 16) +
+      geom_label(boxDat,   mapping = aes(x = groupL, y = rep(1200, nrow(boxDat)), 
+        label = paste(&quot;2.5%: &quot;, round(upper,2), &quot;\nMedian: &quot;, round(median,2), &quot;\n97.5%: &quot;, round(lower,2))), size = 1.7) +
+    
+    
+      theme_bw() +
+      labs(x = &quot;Residuals in situ and Permafrost_cci ALT [cm]&quot;, y = &quot;Latitude&quot;) +
+      coord_flip() +
+      theme(text = element_text(size=rel(4)))
+  
+  png(&quot;figures/Figure_4.5.png&quot;, width = 20, height = 20, units = &quot;cm&quot;, res = 250)
+  gridExtra::grid.arrange(pl1, pl2, nrow =2, heights = c(1, 1.6))</code></pre>
+<pre><code>  ## Warning: Raster pixels are placed at uneven horizontal intervals and will be
+  ## shifted. Consider using geom_tile() instead.</code></pre>
+<pre><code>  ## Warning: Raster pixels are placed at uneven vertical intervals and will be
+  ## shifted. Consider using geom_tile() instead.</code></pre>
+<pre><code>  ## Warning: Removed 910 rows containing missing values (geom_raster).</code></pre>
+<pre class="r"><code>  dev.off()</code></pre>
+<pre><code>  ## quartz_off_screen 
+  ##                 2</code></pre>
+</details>
+<p><br/></p>
+<p><img src="figures/Figure_4.5.png" /></p>
 
 
 

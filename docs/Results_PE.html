@@ -299,7 +299,7 @@ R Library
 <p><br/></p>
 <details>
 <summary>
-Figure 4.3 code
+Figure 5.1 code
 </summary>
 <pre class="r"><code>  mapDat &lt;- inSitu_pe %&gt;% mutate(falseTrue  = ifelse(pe  &amp; is.na(PE_Permafrost_cci), 1, 
                                                                  ifelse(!pe &amp; !is.na(PE_Permafrost_cci), 3, 2))) %&gt;%
@@ -333,6 +333,46 @@ Figure 4.3 code
 </details>
 <p><br/></p>
 <p><img src="figures/Figure_5.1.png" /></p>
+<details>
+<summary>
+Figure 4.2 code
+</summary>
+<pre class="r"><code>  tble   &lt;- expand_grid(PE_Permafrost_cci = c(0,14,29,43,57,71,86,100), falseTrue = c(1,2,3))
+  mapDat &lt;- inSitu_pe %&gt;% mutate(falseTrue  = ifelse(pe  &amp; is.na(PE_Permafrost_cci), 1, 
+                                                                 ifelse(!pe &amp; !is.na(PE_Permafrost_cci), 3, 2)),
+                                 PE_Permafrost_cci = ifelse(is.na(PE_Permafrost_cci), 0, PE_Permafrost_cci)) %&gt;%
+                          group_by(PE_Permafrost_cci) %&gt;% count(falseTrue) %&gt;% full_join(tble) %&gt;% 
+    arrange(PE_Permafrost_cci, falseTrue) %&gt;% mutate(n = ifelse(is.na(n), 0, n))</code></pre>
+<pre><code>## Joining, by = c(&quot;PE_Permafrost_cci&quot;, &quot;falseTrue&quot;)</code></pre>
+<pre class="r"><code>  label &lt;- mapDat %&gt;% group_by(PE_Permafrost_cci) %&gt;% summarise(percFalse = sum(n[falseTrue%in%c(1,3)]),
+                                                                percTrue  = n[falseTrue==2]) %&gt;%
+                      rowwise() %&gt;%
+                      mutate(perc = (1-(min(c(percFalse, percTrue))/max(c(percFalse, percTrue)))) * ifelse(percTrue&gt;percFalse,100,-100))
+  
+  
+  png(&quot;figures/Figure_5.2.png&quot;, width = 20, height = 9, units = &quot;cm&quot;, res = 250)
+  ggplot(NULL, aes(x, y)) +
+          geom_bar(data = mapDat, mapping = aes(y=PE_Permafrost_cci, x=n, fill=as.factor(falseTrue)),
+              stat=&quot;identity&quot;, position = &quot;dodge&quot;, orientation = &quot;y&quot;, col = &quot;black&quot;) +
+          scale_fill_manual(&quot;Match-up dataset (1997-2019)&quot;,
+                      values = c(&quot;firebrick&quot;, &quot;chartreuse4&quot;, &quot;darkviolet&quot;),
+                      labels = c(&quot;in-site TRUE, PE_cci FALSE&quot;, &quot;match&quot;, &quot;in-site FALSE, PE_cci TRUE&quot;)) +
+          xlim(0, 3500) +
+          geom_label(mapping = aes(x = rep(3200, nrow(label)), y = label$PE_Permafrost_cci), 
+                     label = paste(round(label$perc,2), &quot;%&quot;), col = ifelse(label$perc&gt;0, &quot;black&quot;, &quot;red&quot;)) +
+          theme_bw() +
+          scale_y_continuous(breaks = label$PE_Permafrost_cci) + 
+          labs(x = &quot;count&quot;, y = &quot;Permafrost extent [%]&quot;) +
+          theme(axis.title   = element_text(size=rel(1.5)),
+                  axis.text    = element_text(size=rel(1.5)),
+                  legend.text  = element_text(size=rel(1)),
+                  legend.title = element_text(size=rel(1.1)))
+  dev.off()</code></pre>
+<pre><code>## quartz_off_screen 
+##                 2</code></pre>
+</details>
+<p><br/></p>
+<p><img src="figures/Figure_5.2.png" /></p>
 
 
 

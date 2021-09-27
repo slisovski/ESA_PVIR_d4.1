@@ -33,9 +33,9 @@ editor_options:
   load("data/inSitu_temp.rda")
   
   ## base map
-  mp <-  st_read("~/Google Drive/GeoDat/NaturalEarth/50m_physical/ne_50m_land/ne_50m_land.shp", quiet = TRUE) %>% 
+  mp <-  st_read("~/Google Drive/My Drive/GeoDat/NaturalEarth/50m_physical/ne_50m_land/ne_50m_land.shp", quiet = TRUE) %>% 
     st_set_crs(4326) %>% st_buffer(0) %>% st_union() %>%
-    st_sym_difference(st_read("~/Google Drive/GeoDat/NaturalEarth/110m_physical/ne_110m_lakes/ne_110m_lakes.shp", quiet = TRUE) %>% 
+    st_sym_difference(st_read("~/Google Drive/My Drive/GeoDat/NaturalEarth/110m_physical/ne_110m_lakes/ne_110m_lakes.shp", quiet = TRUE) %>% 
                         st_set_crs(4326) %>% st_union()) %>%
     st_transform("+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs") %>%
     st_crop(st_bbox(c(xmin = -5.5e6, ymin = -4e6, xmax = 8e6, ymax = 4e6)))

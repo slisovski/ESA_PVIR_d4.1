@@ -11,6 +11,10 @@ navbar:
       href: Methods_ALT.html
     - text: "Results: ALT"
       href: Results_ALT.html
+    - text: "Methods: PE"
+      href: Methods_PE.html
+    - text: "Results: PE"
+      href: Results_PE.html
 output:
   html_document:
     theme: cosmo

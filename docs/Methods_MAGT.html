@@ -13,8 +13,8 @@
 
 <title>Methods for quality assessment: MAGT</title>
 
-<script src="site_libs/header-attrs-2.11/header-attrs.js"></script>
-<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="site_libs/header-attrs-2.10/header-attrs.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -253,6 +253,12 @@ $(document).ready(function () {
 <li>
   <a href="Results_ALT.html">Results: ALT</a>
 </li>
+<li>
+  <a href="Methods_PE.html">Methods: PE</a>
+</li>
+<li>
+  <a href="Results_PE.html">Results: PE</a>
+</li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
         
@@ -418,9 +424,9 @@ Match-up code
 Figure 2.2 code
 </summary>
 <pre class="r"><code>  ## base map
-    mp &lt;-  st_read(&quot;~/Google Drive/GeoDat/NaturalEarth/50m_physical/ne_50m_land/ne_50m_land.shp&quot;, quiet = TRUE) %&gt;% 
+    mp &lt;-  st_read(&quot;~/Google Drive/My Drive/GeoDat/NaturalEarth/50m_physical/ne_50m_land/ne_50m_land.shp&quot;, quiet = TRUE) %&gt;% 
     st_set_crs(4326) %&gt;% st_buffer(0) %&gt;% st_union() %&gt;%
-    st_sym_difference(st_read(&quot;~/Google Drive/GeoDat/NaturalEarth/110m_physical/ne_110m_lakes/ne_110m_lakes.shp&quot;, quiet = TRUE) %&gt;% 
+    st_sym_difference(st_read(&quot;~/Google Drive/My Drive/GeoDat/NaturalEarth/110m_physical/ne_110m_lakes/ne_110m_lakes.shp&quot;, quiet = TRUE) %&gt;% 
     st_set_crs(4326) %&gt;% st_union()) %&gt;%
     st_transform(&quot;+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs&quot;) %&gt;%
     st_crop(st_bbox(c(xmin = -5.5e6, ymin = -4e6, xmax = 8e6, ymax = 4e6)))
@@ -806,7 +812,7 @@ Figure 2.13 code
   ## shifted. Consider using geom_tile() instead.</code></pre>
 <pre><code>  ## Warning: Raster pixels are placed at uneven vertical intervals and will be
   ## shifted. Consider using geom_tile() instead.</code></pre>
-<pre><code>  ## Warning: Removed 910 rows containing missing values (geom_raster).</code></pre>
+<pre><code>  ## Warning: Removed 719 rows containing missing values (geom_raster).</code></pre>
 <pre><code>  ## Warning: Removed 2 rows containing missing values (geom_point).</code></pre>
 <pre class="r"><code>  dev.off()</code></pre>
 <pre><code>  ## quartz_off_screen 

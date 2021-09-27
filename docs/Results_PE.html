@@ -9,10 +9,9 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Simeon Lisovski (AWI)" />
 
 
-<title>D4.1 Product Validation and Intercomparison Report (PVIR): Data analyses and data presentation</title>
+<title>Methods for quality assessment: PE</title>
 
 <script src="site_libs/header-attrs-2.10/header-attrs.js"></script>
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
@@ -272,9 +271,7 @@ $(document).ready(function () {
 
 
 
-<h1 class="title toc-ignore">D4.1 Product Validation and Intercomparison Report (PVIR): Data analyses and data presentation</h1>
-<h4 class="author">Simeon Lisovski (AWI)</h4>
-<h4 class="date">9/16/2021</h4>
+<h1 class="title toc-ignore">Methods for quality assessment: PE</h1>
 
 </div>
 
@@ -286,6 +283,56 @@ $(document).ready(function () {
   margin-right: auto;
 }
 </style>
+<details>
+<summary>
+R Library
+</summary>
+<pre class="r"><code>  library(readxl)
+  library(ncdf4)
+  library(raster)
+  library(tidyverse)
+  library(ggforce)
+  library(grid)
+  library(sf)
+  sf::sf_use_s2(FALSE)</code></pre>
+</details>
+<p><br/></p>
+<details>
+<summary>
+Figure 4.3 code
+</summary>
+<pre class="r"><code>  mapDat &lt;- inSitu_pe %&gt;% mutate(falseTrue  = ifelse(pe  &amp; is.na(PE_Permafrost_cci), 1, 
+                                                                 ifelse(!pe &amp; !is.na(PE_Permafrost_cci), 3, 2))) %&gt;%
+    filter(!duplicated(Name))
+    
+  
+  crds_pts &lt;- st_as_sf(mapDat, coords = c(&quot;Longitude&quot;, &quot;Latitude&quot;)) %&gt;% st_set_crs(4326) %&gt;%
+    st_transform(&quot;+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs&quot;) %&gt;% st_coordinates()
+    
+  png(&quot;figures/Figure_5.1.png&quot;, width = 20, height = 9, units = &quot;cm&quot;, res = 250)
+  map +
+    geom_raster(data=rast_pe, aes(x=x, y=y, fill=value), alpha=0.8) + 
+    viridis::scale_fill_viridis(begin = 1, end = 0) +
+    labs(fill = &quot;Permafrost_cci PFR (median 1997-2019)&quot;) +
+    ggnewscale::new_scale_fill() +
+    geom_point(data = data.frame(crds_pts, shape = as.factor(mapDat$falseTrue)), 
+               aes(x = X, y = Y, fill = shape), size = 2, shape = 21) +
+    scale_fill_manual(&quot;Match-up&quot;,
+                      values = c(&quot;firebrick&quot;, &quot;chartreuse4&quot;, &quot;darkviolet&quot;),
+                      labels = c(&quot;in-site TRUE, PE_cci FALSE&quot;, &quot;match&quot;, &quot;in-site FALSE, PE_cci TRUE&quot;)) + 
+    labs(x = &quot;&quot;, y = &quot;&quot;)</code></pre>
+<pre><code>  ## Warning: Raster pixels are placed at uneven horizontal intervals and will be
+  ## shifted. Consider using geom_tile() instead.</code></pre>
+<pre><code>  ## Warning: Raster pixels are placed at uneven vertical intervals and will be
+  ## shifted. Consider using geom_tile() instead.</code></pre>
+<pre><code>  ## Warning: Removed 888 rows containing missing values (geom_raster).</code></pre>
+<pre><code>  ## Warning: Removed 2 rows containing missing values (geom_point).</code></pre>
+<pre class="r"><code>  dev.off()</code></pre>
+<pre><code>  ## quartz_off_screen 
+  ##                 2</code></pre>
+</details>
+<p><br/></p>
+<p><img src="figures/Figure_5.1.png" /></p>
 
 
 

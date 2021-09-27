@@ -9,10 +9,9 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Simeon Lisovski (AWI)" />
 
 
-<title>D4.1 Product Validation and Intercomparison Report (PVIR): Data analyses and data presentation</title>
+<title>Methods for quality assessment: PE</title>
 
 <script src="site_libs/header-attrs-2.10/header-attrs.js"></script>
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
@@ -272,9 +271,7 @@ $(document).ready(function () {
 
 
 
-<h1 class="title toc-ignore">D4.1 Product Validation and Intercomparison Report (PVIR): Data analyses and data presentation</h1>
-<h4 class="author">Simeon Lisovski (AWI)</h4>
-<h4 class="date">9/16/2021</h4>
+<h1 class="title toc-ignore">Methods for quality assessment: PE</h1>
 
 </div>
 
@@ -286,6 +283,97 @@ $(document).ready(function () {
   margin-right: auto;
 }
 </style>
+<details>
+<summary>
+R Library
+</summary>
+<pre class="r"><code>  library(readxl)
+  library(ncdf4)
+  library(raster)
+  library(tidyverse)
+  library(ggforce)
+  library(grid)
+  library(sf)
+  sf::sf_use_s2(FALSE)</code></pre>
+</details>
+<p><br/></p>
+<div id="assessments-of-permafrost-extent" class="section level2">
+<h2>Assessments of Permafrost Extent</h2>
+<p><em>Match-up Version 2 synthesised binary Permafrost Extent PFR (CRDPv2 2021)</em></p>
+<p>Match-up data set in phase 3, Version 3: - Permafrost_cci CryoGrid 3 Permafrost fraction PFR per site and year is given in 0, 14, 29, 43, 57, 71 or 100% - A binary PFR data set from 1997 to 2019 is compiled from Version 3 synthesised mean annual GTD - discrete depths and Version 3 synthesised annual CALM ALT and active layer depth measurements from Russian expeditions (Bartsch, oral communication, 2020) - Criteria permafrost abundance yes / no - One data set with Yes if any measurements in depths (0 – 2.4 m) MAGT ≤0.5 °C and Yes to all ALT and ALD measurements &lt;300 cm</p>
+<p>The in situ dataset:</p>
+<details>
+<summary>
+Dataset compilation
+</summary>
+<pre class="r"><code>load(&quot;data/inSitu_temp.rda&quot;)
+load(&quot;data/inSitu_alt.rda&quot;)
+
+inSitu_pe &lt;- inSitu_temp %&gt;% filter(Depth&lt;240) %&gt;% group_by(Name, Year) %&gt;%
+  summarise(pe = any(Temp&lt;=0.5)) %&gt;% mutate(type = &quot;MAGT&quot;) %&gt;% bind_rows(
+    inSitu_alt %&gt;% group_by(Name, Year) %&gt;%
+      summarise(pe = any(Depth&lt;300)) %&gt;% mutate(type = &quot;ALT&quot;)
+  ) %&gt;% left_join(
+    bind_rows(inSitu_temp %&gt;% select(Name, Longitude, Latitude) %&gt;% filter(!duplicated(Name)),
+              inSitu_alt %&gt;% select(Name, Longitude, Latitude) %&gt;% filter(!duplicated(Name)))
+  )</code></pre>
+<pre><code>## `summarise()` has grouped output by &#39;Name&#39;. You can override using the `.groups` argument.
+## `summarise()` has grouped output by &#39;Name&#39;. You can override using the `.groups` argument.</code></pre>
+<pre><code>## Joining, by = &quot;Name&quot;</code></pre>
+</details>
+<details>
+<summary>
+Match up
+</summary>
+<pre class="r"><code>path    &lt;- &quot;/Users/slisovski/Documents/ESAproject/SimulationData/PermafrostExtent//&quot;
+peFls  &lt;- data.frame(fl = list.files(path))
+peFls$year &lt;- as.numeric(sapply(strsplit(peFls$fl, &quot;-&quot;), function(x) x[7]))
+  
+inSitu_pe$PE_Permafrost_cci &lt;- NA
+
+for(y in unique(peFls$year)) {
+  
+    cat(sprintf(&#39;\r%d&#39;, y))
+  
+    indTab &lt;- which(inSitu_pe$Year==y)
+    subTab &lt;- st_as_sf(inSitu_pe[indTab,], coords = c(&quot;Longitude&quot;, &quot;Latitude&quot;), crs = 4326)
+  
+    st &lt;- raster(glue::glue(&quot;{path}{peFls$fl[peFls$year==y]}&quot;))
+    proj4string(st) &lt;- &quot;+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs&quot;
+  
+    extrM &lt;- raster::extract(st, subTab %&gt;% st_transform(proj4string(st)) %&gt;%
+                     st_coordinates())
+  
+    inSitu_pe$PE_Permafrost_cci[indTab] &lt;- extrM
+}</code></pre>
+<pre><code>## 
+1997
+1998
+1999
+2000
+2001
+2002
+2003
+2004
+2005
+2006
+2007
+2008
+2009
+2010
+2011
+2012
+2013
+2014
+2015
+2016
+2017
+2018
+2019</code></pre>
+<pre class="r"><code>inSitu_pe &lt;- inSitu_pe %&gt;% filter(Year%in%unique(peFls$year))
+save(inSitu_pe, file = &quot;data/inSitu_pe.rda&quot;)</code></pre>
+</details>
+</div>
 
 
 

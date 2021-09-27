@@ -13,8 +13,8 @@
 
 <title>Results: Active Layer Thickness</title>
 
-<script src="site_libs/header-attrs-2.11/header-attrs.js"></script>
-<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="site_libs/header-attrs-2.10/header-attrs.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -253,6 +253,12 @@ $(document).ready(function () {
 <li>
   <a href="Results_ALT.html">Results: ALT</a>
 </li>
+<li>
+  <a href="Methods_PE.html">Methods: PE</a>
+</li>
+<li>
+  <a href="Results_PE.html">Results: PE</a>
+</li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
         
@@ -438,7 +444,7 @@ Figure 4.5 code
     geom_point(data = data.frame(crds_pts, maxRes = maxTab$maxRes), 
                    aes(x = X, y = Y, fill = maxRes), alpha = 1, shape = 21, stroke = 0.2, size = 3.5) +
     scale_fill_viridis_c() +
-    labs(fill = &quot;Residuals [cm]&quot;, x = &quot;&quot;, y = &quot;&quot;) +
+    labs(fill = &quot;Residuals [m]&quot;, x = &quot;&quot;, y = &quot;&quot;) +
     theme(legend.background = element_rect(fill = &quot;white&quot;),
           legend.text = element_text(size=rel(0.8)),
           legend.title = element_text(size=rel(0.8))) +
